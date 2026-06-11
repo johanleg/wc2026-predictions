@@ -312,7 +312,7 @@ const AWARDS = [
   {id:'topscorer',icon:'👟',label:'Toppscorer'},
   {id:'mvp',icon:'🏅',label:'Beste spiller (MVP)'},
   {id:'gk',icon:'🧤',label:'Beste målvakt'},
-  {id:'young',icon:'🌟',label:'Beste unge spiller'},
+  {id:'young',icon:'✨',label:'Årets Øyeblikk'},
   {id:'cards',icon:'🟨',label:'Mesterskapets bassenggutt'},
   {id:'norwagoals',icon:'⚽',label:'Mål scorer Norge totalt?'}
 ];
@@ -340,31 +340,94 @@ const R32 = [
   {id:'r32_88',label:'M88',hSlot:'2D',aSlot:'2G',aPool:null},   // 2D vs 2G
 ];
 
-const ADMIN_PIN = '1234';
+const ADMIN_PIN = '6767'; // Drit i Hans
 const DEADLINE = new Date('2026-06-12T21:00:00');
 let currentUser = null;
 
 // ============================================================
-// STORAGE
+// SUPABASE CONFIG
 // ============================================================
-function gs(key,def={}){try{return JSON.parse(localStorage.getItem(key))||def}catch{return def}}
-function ss(key,val){localStorage.setItem(key,JSON.stringify(val))}
-function getAllUsers(){return gs('wc26_users',[])}
-function getUser(name){return getAllUsers().find(u=>u.name===name)||null}
-function saveUser(u){const users=getAllUsers();const i=users.findIndex(x=>x.name===u.name);if(i>=0)users[i]=u;else users.push(u);ss('wc26_users',users)}
-function getResults(){return gs('wc26_results',{})}
-function saveResultsData(r){ss('wc26_results',r)}
+const SB_URL='https://qmgbctsklvivfihjkgas.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZ2JjdHNrbHZpdmZpaGprZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTEwMDQsImV4cCI6MjA5Njc2NzAwNH0.jExwsv7huq17oU6xTyLTPK57akYfu42ClQp5GEgiLl0';
+const SB_HDR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+
+async function sbAll(table){
+  const r=await fetch(SB_URL+'/rest/v1/'+table+'?select=*',{headers:SB_HDR});
+  return r.ok?r.json():[];
+}
+async function sbUpsert(table,data){
+  await fetch(SB_URL+'/rest/v1/'+table,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(data)});
+}
+async function sbPatch(table,key,val,data){
+  await fetch(SB_URL+'/rest/v1/'+table+'?'+key+'=eq.'+encodeURIComponent(val),{method:'PATCH',headers:SB_HDR,body:JSON.stringify(data)});
+}
+
+// ============================================================
+// STORAGE — Supabase backend, localStorage for instant UI response
+// ============================================================
+function lsGet(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}
+function lsSet(k,v){localStorage.setItem(k,JSON.stringify(v))}
+
+function rowToUser(r){
+  return {name:r.name,groupPicks:r.group_picks||{},tiebreaks:r.tiebreaks||{},
+    thirdRank:r.third_rank||[],koPicks:r.ko_picks||{},awards:r.awards||{},
+    awardBonus:r.award_bonus||0,submitted:r.submitted||false,submittedAt:r.submitted_at||null};
+}
+function userToRow(u){
+  return {name:u.name,group_picks:u.groupPicks||{},tiebreaks:u.tiebreaks||{},
+    third_rank:u.thirdRank||[],ko_picks:u.koPicks||{},awards:u.awards||{},
+    award_bonus:u.awardBonus||0,submitted:u.submitted||false,
+    submitted_at:u.submittedAt||null,updated_at:new Date().toISOString()};
+}
+
+async function getAllUsers(){
+  try{
+    const rows=await sbAll('predictions');
+    if(Array.isArray(rows)&&rows.length>=0){
+      const users=rows.map(rowToUser);
+      lsSet('wc26_users',users);
+      return users;
+    }
+  }catch(e){}
+  return lsGet('wc26_users',[]);
+}
+function getUser(name){
+  return lsGet('wc26_users',[]).find(u=>u.name===name)||null;
+}
+async function saveUser(u){
+  const cached=lsGet('wc26_users',[]);
+  const i=cached.findIndex(x=>x.name===u.name);
+  if(i>=0)cached[i]=u;else cached.push(u);
+  lsSet('wc26_users',cached);
+  await sbUpsert('predictions',userToRow(u));
+}
+async function getResults(){
+  try{
+    const rows=await sbAll('results');
+    if(Array.isArray(rows)&&rows[0]){
+      lsSet('wc26_results',rows[0].data||{});
+      return rows[0].data||{};
+    }
+  }catch(e){}
+  return lsGet('wc26_results',{});
+}
+async function saveResultsData(r){
+  lsSet('wc26_results',r);
+  await sbPatch('results','id',1,{data:r});
+}
 function isLocked(){return new Date()>DEADLINE}
 
 // ============================================================
 // INIT
 // ============================================================
-window.onload=function(){
+window.onload=async function(){
   updateDeadlineBadge();
   buildGroupStageUI();
   buildAwardsUI();
   buildKoRounds();
   buildAdminResultEntries();
+  // Load all users from Supabase into local cache first
+  await getAllUsers();
   const saved=localStorage.getItem('wc26_currentUser');
   if(saved){const u=getUser(saved);if(u){currentUser=u;showHomeInfo();}}
   renderLeaderboard();
@@ -388,7 +451,7 @@ function showTab(name){
   const tabs=['home','groups','knockout','awards','leaderboard'];
   const idx=tabs.indexOf(name);
   if(idx>=0) document.querySelectorAll('.tab')[idx].classList.add('active');
-  if(name==='groups'){loadGroupPredictions();updateGroupProgress();refreshTiebreaks();}
+  if(name==='groups'){loadGroupPredictions().then(()=>{updateGroupProgress();refreshTiebreaks();});}
   if(name==='knockout'){loadKoPredictions();refreshThirdPlace();}
   if(name==='awards') loadAwards();
   if(name==='leaderboard') renderLeaderboard();
@@ -402,7 +465,7 @@ function startEntry(){
   if(!name)return;
   let u=getUser(name);
   if(!u) u={name,groupPicks:{},tiebreaks:{},thirdRank:[],koPicks:{},awards:{},awardBonus:0,submitted:false};
-  currentUser=u;saveUser(u);
+  currentUser=u;await saveUser(u);
   localStorage.setItem('wc26_currentUser',name);
   showHomeInfo();showTab('groups');
 }
@@ -471,10 +534,10 @@ function buildGroupStageUI(){
   });
 }
 
-function loadGroupPredictions(){
+async function loadGroupPredictions(){
   if(!currentUser)return;
   const picks=currentUser.groupPicks||{};
-  const results=getResults();
+  const results=await getResults();
   GROUP_KEYS.forEach(g=>{
     GROUPS[g].matches.forEach((pair,i)=>{
       const key=g+i;
@@ -595,129 +658,102 @@ function refreshTiebreaks(){
   if(!any) c.innerHTML='<div class="notice">Ingen poengtying ennå — tipp flere kamper for å se dette.</div>';
 }
 
-// Generic draggable list helper
-function makeDraggable(ul, onDrop){
-  let dragEl=null;
+// ============================================================
+// TOUCH + MOUSE DRAG — works on iOS, Android and desktop
+// ============================================================
+function addTouchDrag(ul, itemSel, canDragFn, onDrop, onMove){
+  let dragEl=null, clone=null, startY=0, startX=0, dragPts=null;
+
   ul.addEventListener('dragstart',e=>{
-    dragEl=e.target.closest('.drag-item');
-    if(!dragEl)return;
+    dragEl=e.target.closest(itemSel);
+    if(!dragEl||(canDragFn&&!canDragFn(dragEl))){dragEl=null;e.preventDefault();return;}
+    dragPts=dragEl.dataset.pts!==undefined?parseInt(dragEl.dataset.pts):null;
     setTimeout(()=>dragEl.classList.add('dragging'),0);
   });
   ul.addEventListener('dragend',()=>{
-    if(dragEl){dragEl.classList.remove('dragging');dragEl=null;onDrop();}
+    if(!dragEl)return;
+    dragEl.classList.remove('dragging');dragEl=null;dragPts=null;onDrop();
   });
   ul.addEventListener('dragover',e=>{
     e.preventDefault();if(!dragEl)return;
-    const target=e.target.closest('.drag-item');
-    if(target&&target!==dragEl){
-      const rect=target.getBoundingClientRect();
-      if(e.clientY<rect.top+rect.height/2) ul.insertBefore(dragEl,target);
-      else ul.insertBefore(dragEl,target.nextSibling);
-    }
+    const target=e.target.closest(itemSel);
+    if(!target||target===dragEl)return;
+    if(dragPts!==null&&parseInt(target.dataset.pts)!==dragPts)return;
+    const rect=target.getBoundingClientRect();
+    ul.insertBefore(dragEl,e.clientY<rect.top+rect.height/2?target:target.nextSibling);
+    onMove&&onMove();
+  });
+
+  ul.addEventListener('touchstart',e=>{
+    const t=e.touches[0];
+    const el=document.elementFromPoint(t.clientX,t.clientY)?.closest(itemSel);
+    if(!el||(canDragFn&&!canDragFn(el)))return;
+    dragEl=el;
+    dragPts=el.dataset.pts!==undefined?parseInt(el.dataset.pts):null;
+    startY=t.clientY;startX=t.clientX;
+    const rect=el.getBoundingClientRect();
+    clone=el.cloneNode(true);
+    clone.style.cssText='position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;opacity:0.88;z-index:9999;pointer-events:none;background:var(--surface2);border:1px solid var(--gold);border-radius:6px';
+    document.body.appendChild(clone);
+    el.classList.add('dragging');
+  },{passive:true});
+
+  ul.addEventListener('touchmove',e=>{
+    if(!dragEl)return;
+    e.preventDefault();
+    const t=e.touches[0];
+    clone.style.transform='translate('+(t.clientX-startX)+'px,'+(t.clientY-startY)+'px)';
+    clone.style.display='none';
+    const under=document.elementFromPoint(t.clientX,t.clientY)?.closest(itemSel);
+    clone.style.display='';
+    if(!under||under===dragEl)return;
+    if(dragPts!==null&&parseInt(under.dataset.pts)!==dragPts)return;
+    const rect=under.getBoundingClientRect();
+    ul.insertBefore(dragEl,t.clientY<rect.top+rect.height/2?under:under.nextSibling);
+    onMove&&onMove();
+  },{passive:false});
+
+  const endTouch=()=>{
+    if(!dragEl)return;
+    dragEl.classList.remove('dragging');
+    if(clone){clone.remove();clone=null;}
+    dragEl=null;dragPts=null;
+    onDrop();
+  };
+  ul.addEventListener('touchend',endTouch);
+  ul.addEventListener('touchcancel',endTouch);
+}
+
+function makeDraggable(ul, onDrop){
+  addTouchDrag(ul,'.drag-item',null,onDrop,()=>{
     [...ul.querySelectorAll('.drag-item')].forEach((li,i)=>{
       const rb=li.querySelector('.rank-badge');if(rb)rb.textContent=i+1;
     });
   });
 }
 
-function getThirdsOrdered(){
-  const thirds=GROUP_KEYS.map(g=>{
-    const standings=getGroupStandings(g);
-    const t=standings[2];
-    return {group:g,team:t?t.team:'3. plass '+GROUPS[g].name,pts:t?t.pts:0};
-  });
-  const byPts={};
-  thirds.forEach(t=>{if(!byPts[t.pts])byPts[t.pts]=[];byPts[t.pts].push(t);});
-  const saved=currentUser?.thirdRank||[];
-  const result=[];
-  Object.keys(byPts).map(Number).sort((a,b)=>b-a).forEach(pt=>{
-    const tier=byPts[pt];
-    // A tier is draggable if it has more than 1 team OR if it straddles the cut line (position 7/8)
-    // We mark canDrag after building result, once we know positions
-    const savedInTier=saved.filter(g=>tier.find(t=>t.group===g));
-    const unsaved=tier.filter(t=>!savedInTier.includes(t.group));
-    const ordered=[...savedInTier.map(g=>tier.find(t=>t.group===g)).filter(Boolean),...unsaved];
-    ordered.forEach(t=>result.push({...t,canDrag:false})); // set below
-  });
-  // Now determine which tiers straddle or are fully within the draggable zone
-  // Find the points level at the cut (8th place)
-  const cutPts=result[7]?.pts??-1;
-  // Any team at exactly the cut points level can drag (they compete for the last spots)
-  result.forEach(t=>{
-    if(t.pts===cutPts && byPts[cutPts].length>1) t.canDrag=true;
-  });
-  return result;
-}
-
-function refreshThirdPlace(){
-  const c=document.getElementById('thirdPlaceContent');c.innerHTML='';
-  const ordered=getThirdsOrdered();
-  const ul=document.createElement('ul');ul.className='third-list';ul.id='thirdDragList';
-
-  // Find where the cut actually is — after the 8th item
-  ordered.forEach((item,idx)=>{
-    const qualifies=idx<8;
-    const li=document.createElement('li');
-    li.className='third-item'+(qualifies?' qualifies':' eliminated')+(item.canDrag?' can-drag':'');
-    li.draggable=item.canDrag;
-    li.dataset.group=item.group;
-    li.dataset.pts=item.pts;
-    li.innerHTML=`
-      <span class="drag-handle" style="opacity:${item.canDrag?1:0.2}">${item.canDrag?'⠿':'—'}</span>
-      <span class="rank-badge">${idx+1}</span>
-      <span style="flex:1">${item.team}</span>
-      <span class="chip ${qualifies?'chip-green':'chip-red'}" style="font-size:10px">${qualifies?'✓ Videre':'Ut'}</span>
-      <span style="font-size:11px;color:var(--muted);margin-left:6px">${item.pts}p</span>`;
-    ul.appendChild(li);
-    if(idx===7){
-      const sep=document.createElement('li');sep.className='sep-line';sep.textContent='──── bunn 4 er ute ────';
-      ul.appendChild(sep);
-    }
-  });
-
-  makeThirdsDraggable(ul);
-  c.appendChild(ul);
-  refreshR32(ordered);
-}
-
 function makeThirdsDraggable(ul){
-  let dragEl=null,dragPts=null;
-  ul.addEventListener('dragstart',e=>{
-    dragEl=e.target.closest('.third-item');
-    if(!dragEl||!dragEl.classList.contains('can-drag')){dragEl=null;return;}
-    dragPts=parseInt(dragEl.dataset.pts);
-    setTimeout(()=>dragEl.classList.add('dragging'),0);
-  });
-  ul.addEventListener('dragend',()=>{
-    if(!dragEl)return;
-    dragEl.classList.remove('dragging');dragEl=null;dragPts=null;
-    saveThirdRank(ul);
-  });
-  ul.addEventListener('dragover',e=>{
-    e.preventDefault();if(!dragEl)return;
-    // Allow dropping on any element with the same points — including across the cut line
-    const target=e.target.closest('.third-item');
-    if(!target||target===dragEl)return;
-    if(parseInt(target.dataset.pts)!==dragPts)return;
-    const rect=target.getBoundingClientRect();
-    if(e.clientY<rect.top+rect.height/2) ul.insertBefore(dragEl,target);
-    else ul.insertBefore(dragEl,target.nextSibling);
-    // Recompute rank badges (skip sep-line)
-    let rank=0;
-    ul.querySelectorAll('.third-item').forEach(li=>{
-      const rb=li.querySelector('.rank-badge');if(rb)rb.textContent=++rank;
-    });
-    // Update qualifies/eliminated styling live
-    let pos=0;
-    ul.querySelectorAll('.third-item').forEach(li=>{
-      li.classList.toggle('qualifies',pos<8);
-      li.classList.toggle('eliminated',pos>=8);
-      const chip=li.querySelector('.chip');
-      if(chip){chip.className='chip '+(pos<8?'chip-green':'chip-red');chip.textContent=pos<8?'✓ Videre':'Ut';}
-      pos++;
-    });
-  });
+  addTouchDrag(
+    ul,'.third-item',
+    el=>el.classList.contains('can-drag'),
+    ()=>saveThirdRank(ul),
+    ()=>{
+      let rank=0;
+      ul.querySelectorAll('.third-item').forEach(li=>{
+        const rb=li.querySelector('.rank-badge');if(rb)rb.textContent=++rank;
+      });
+      let pos=0;
+      ul.querySelectorAll('.third-item').forEach(li=>{
+        li.classList.toggle('qualifies',pos<8);
+        li.classList.toggle('eliminated',pos>=8);
+        const chip=li.querySelector('.chip');
+        if(chip){chip.className='chip '+(pos<8?'chip-green':'chip-red');chip.textContent=pos<8?'\u2713 Videre':'Ut';}
+        pos++;
+      });
+    }
+  );
 }
+
 
 function saveThirdRank(ul){
   if(!currentUser)return;
@@ -932,28 +968,31 @@ function submitPredictions(){
 // ============================================================
 // LEADERBOARD
 // ============================================================
-function calcScore(u){
-  const res=getResults();let pts=0;
+function calcScore(u,res){
+  let pts=0;
   GROUP_KEYS.forEach(g=>GROUPS[g].matches.forEach((_,i)=>{const k=g+i;if(res[k]&&(u.groupPicks||{})[k]===res[k])pts++;}));
   return pts+(u.awardBonus||0);
 }
-function calcGroupPts(u){
-  const res=getResults();let pts=0;
+function calcGroupPts(u,res){
+  let pts=0;
   GROUP_KEYS.forEach(g=>GROUPS[g].matches.forEach((_,i)=>{const k=g+i;if(res[k]&&(u.groupPicks||{})[k]===res[k])pts++;}));
   return pts;
 }
-function renderLeaderboard(){
+async function renderLeaderboard(){
   const c=document.getElementById('leaderboardContent');
-  const users=getAllUsers().filter(u=>u.submitted||Object.keys(u.groupPicks||{}).length>0);
+  c.innerHTML='<div class="notice">Laster tabell...</div>';
+  const allUsers=await getAllUsers();
+  const users=allUsers.filter(u=>u.submitted||Object.keys(u.groupPicks||{}).length>0);
   if(!users.length){c.innerHTML='<div class="notice">Ingen tips sendt inn ennå.</div>';return;}
-  const scored=users.map(u=>({...u,score:calcScore(u)})).sort((a,b)=>b.score-a.score);
+  const res=await getResults();
+  const scored=users.map(u=>({...u,score:calcScore(u,res)})).sort((a,b)=>b.score-a.score);
   c.innerHTML=scored.map((u,i)=>{
     const isYou=currentUser?.name===u.name;
     return `<div class="lb-row${isYou?' you':''}" onclick="openModal('${u.name.replace(/'/g,"\\'")}')">
       <span class="lb-rank${i<3?' top3':''}">${['🥇','🥈','🥉'][i]||i+1}</span>
       <div style="flex:1">
         <div class="lb-name">${u.name}${isYou?' <span class="chip chip-gold">deg</span>':''}</div>
-        <div class="lb-breakdown">⚽ ${calcGroupPts(u)}p grupper · 🌟 ${u.awardBonus||0}p spesial · ${u.submitted?'<span style="color:var(--green)">innsendt</span>':'<span style="color:var(--muted)">pågår</span>'}</div>
+        <div class="lb-breakdown">⚽ ${calcGroupPts(u,res)}p grupper · 🌟 ${u.awardBonus||0}p spesial · ${u.submitted?'<span style="color:var(--green)">innsendt</span>':'<span style="color:var(--muted)">pågår</span>'}</div>
       </div>
       <span class="lb-pts">${u.score}p</span>
     </div>`;
@@ -963,10 +1002,10 @@ function renderLeaderboard(){
 // ============================================================
 // MODAL
 // ============================================================
-function openModal(name){
+async function openModal(name){
   const u=getUser(name);if(!u)return;
   document.getElementById('modalTitle').textContent=name+'s tips';
-  const res=getResults();let html='';
+  const res=await getResults();let html='';
   html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px">Gruppefase-tips</div>';
   GROUP_KEYS.forEach(g=>{
     html+=`<div style="font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:600">${GROUPS[g].name}</div>`;
@@ -1025,7 +1064,7 @@ function buildAdminResultEntries(){
     });
   });
 }
-function saveResults(){
+async function saveResults(){
   const res=getResults();
   GROUP_KEYS.forEach(g=>{
     GROUPS[g].matches.forEach((_,i)=>{
@@ -1033,14 +1072,14 @@ function saveResults(){
       if(sel){if(sel.value)res[key]=sel.value;else delete res[key];}
     });
   });
-  saveResultsData(res);renderLeaderboard();alert('Resultater lagret! Tabellen er oppdatert.');
+  await saveResultsData(res);renderLeaderboard();alert('Resultater lagret! Tabellen er oppdatert.');
 }
-function addAwardPoints(){
+async function addAwardPoints(){
   const name=document.getElementById('awardName').value.trim();
   const pts=parseInt(document.getElementById('awardPts').value);
   if(!name||isNaN(pts)){alert('Fyll inn navn og poeng.');return;}
   const u=getUser(name);if(!u){alert('Finner ikke: '+name);return;}
-  u.awardBonus=(u.awardBonus||0)+pts;saveUser(u);renderLeaderboard();
+  u.awardBonus=(u.awardBonus||0)+pts;await saveUser(u);renderLeaderboard();
   alert(`La til ${pts}p for ${name}. Total bonus: ${u.awardBonus}`);
   document.getElementById('awardName').value='';document.getElementById('awardPts').value='';
 }

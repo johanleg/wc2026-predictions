@@ -1,522 +1,1538 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="no">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VM 2026 Tipping</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#2a3550;
-  --text:#e8eaf0;--muted:#6b7a99;--gold:#f5c842;--green:#22c55e;
-  --red:#ef4444;--blue:#3b82f6;
-}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5}
-.app{max-width:720px;margin:0 auto;padding:0 12px 60px}
-.header{text-align:center;padding:28px 0 20px;border-bottom:1px solid var(--border);margin-bottom:20px}
-.header h1{font-size:26px;font-weight:700;letter-spacing:-.5px;color:var(--gold)}
-.header p{font-size:13px;color:var(--muted);margin-top:4px}
-.deadline-badge{display:inline-block;margin-top:10px;padding:4px 12px;background:#1a2235;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted)}
-.deadline-badge span{color:var(--gold);font-weight:600}
-.admin-bar{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px}
-.admin-bar h3{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
-.admin-pin-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-.admin-pin-row input{width:120px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
-.admin-pin-btn{padding:6px 14px;background:var(--gold);color:#111;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
-.admin-tools{display:none}
-.admin-tools.visible{display:block}
-.admin-section{margin-top:12px}
-.admin-section label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
-.result-entry{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
-.result-entry .match-label{font-size:12px;color:var(--muted);min-width:190px}
-.result-entry select{padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
-.save-btn{margin-top:10px;padding:8px 18px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
-.tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--surface);border-radius:10px;padding:4px}
-.tab{flex:1;text-align:center;padding:8px 4px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--muted);border-radius:7px;transition:all .15s;white-space:nowrap}
-.tab.active{background:var(--surface2);color:var(--text);font-weight:600;border:1px solid var(--border)}
-.section{display:none}.section.active{display:block}
-.name-screen{text-align:center;padding:30px 20px}
-.name-screen h2{font-size:20px;margin-bottom:8px}
-.name-screen p{font-size:14px;color:var(--muted);margin-bottom:24px}
-.big-input{width:100%;max-width:300px;padding:12px 16px;background:var(--surface);border:2px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;text-align:center}
-.big-input:focus{outline:none;border-color:var(--gold)}
-.start-btn{display:block;margin:16px auto 0;padding:12px 32px;background:var(--gold);color:#111;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
-.entry-chip{display:inline-block;padding:6px 14px;margin:4px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:border-color .15s}
-.entry-chip:hover{border-color:var(--gold);color:var(--gold)}
-.group-block{margin-bottom:24px}
-.group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.match-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:5px}
-.team-name{flex:1;font-size:13px;font-weight:500}
-.team-name.right{text-align:right}
-.result-btns{display:flex;gap:3px}
-.rb{width:30px;height:26px;font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;color:var(--muted);transition:all .1s}
-.rb:hover{background:var(--surface2)}
-.rb.sel-W{background:#16421f;border-color:var(--green);color:var(--green)}
-.rb.sel-D{background:#1a2d4a;border-color:var(--blue);color:var(--blue)}
-.rb.sel-L{background:#3b1a1a;border-color:var(--red);color:var(--red)}
-.match-played{font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;margin-left:4px}
-.match-played.W{background:#16421f;color:var(--green)}
-.match-played.D{background:#1a2d4a;color:var(--blue)}
-.match-played.L{background:#3b1a1a;color:var(--red)}
-.tiebreak-block{background:var(--surface2);border:1px solid #f5c84240;border-radius:8px;padding:12px;margin-bottom:8px}
-.tiebreak-title{font-size:12px;color:var(--gold);margin-bottom:6px;font-weight:600}
-.tiebreak-note{font-size:12px;color:var(--muted);margin-bottom:8px}
-.drag-list{list-style:none}
-.drag-item{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:grab;user-select:none;font-size:13px;transition:opacity .1s}
-.drag-item.locked{cursor:default;opacity:.6;border-style:dashed}
-.drag-item.dragging{opacity:.3}
-.rank-badge{width:22px;height:22px;border-radius:50%;background:var(--surface2);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.drag-handle{color:var(--muted);font-size:16px;flex-shrink:0}
-.ko-round{margin-bottom:20px}
-.ko-round-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.ko-match{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:5px}
-.ko-match-label{font-size:10px;color:var(--muted);min-width:36px;flex-shrink:0}
-.ko-teams{font-size:12px;flex:1;min-width:0}
-.ko-select{width:160px;flex-shrink:0;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px}
-.ko-select:focus{outline:none;border-color:var(--gold)}
-.third-intro{font-size:13px;color:var(--muted);margin-bottom:12px;padding:10px;background:var(--surface);border-radius:8px;border:1px solid var(--border)}
-.third-list{list-style:none}
-.third-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:13px;user-select:none}
-.third-item.can-drag{cursor:grab}
-.third-item.dragging{opacity:.3}
-.third-item.qualifies{border-color:var(--green)}
-.third-item.eliminated{opacity:.5}
-.award-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
-.award-icon{font-size:18px;width:28px;text-align:center;flex-shrink:0}
-.award-label{font-size:13px;min-width:155px;color:var(--muted);flex-shrink:0}
-.award-input{flex:1;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
-.award-input:focus{outline:none;border-color:var(--gold)}
-.lb-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;cursor:pointer;transition:border-color .15s}
-.lb-row:hover{border-color:var(--blue)}
-.lb-row.you{border-color:var(--gold)}
-.lb-rank{font-size:15px;font-weight:700;color:var(--muted);min-width:24px;text-align:center}
-.lb-rank.top3{color:var(--gold)}
-.lb-name{flex:1;font-size:14px;font-weight:600}
-.lb-pts{font-size:16px;font-weight:700;color:var(--gold)}
-.lb-breakdown{font-size:11px;color:var(--muted)}
-.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:100;overflow-y:auto;padding:10px}
-.modal-overlay.open{display:block}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin:10px auto;max-width:600px;padding:20px}
-.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.modal-header h2{font-size:18px;font-weight:700}
-.modal-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 4px}
-.btn-primary{width:100%;padding:13px;margin-top:20px;background:var(--gold);color:#111;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
-.btn-primary:hover{opacity:.9}
-.btn-secondary{padding:8px 18px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer}
-.btn-secondary:hover{border-color:var(--text)}
-.progress-wrap{margin:12px 0}
-.progress-bar{height:4px;background:var(--border);border-radius:2px}
-.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s}
-.progress-label{font-size:12px;color:var(--muted);margin-top:4px;text-align:right}
-.notice{padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--muted);margin-bottom:14px}
-.notice strong{color:var(--text)}
-.sep-line{margin:6px 0;font-size:11px;color:var(--muted);text-align:center;padding:4px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border)}
-.chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
-.chip-gold{background:#3d2e00;color:var(--gold)}
-.chip-green{background:#16421f;color:var(--green)}
-.chip-blue{background:#1a2d4a;color:var(--blue)}
-.chip-red{background:#3b1a1a;color:var(--red)}
-.mt8{margin-top:8px}.mt16{margin-top:16px}.hide{display:none!important}
-select option{background:#111827}
-@media(max-width:480px){
-  .tab{font-size:11px;padding:7px 2px}
-  .team-name{font-size:12px}
-  .award-label{min-width:110px;font-size:12px}
-  .ko-select{width:130px;font-size:11px}
-  .ko-teams{font-size:11px}
-}
-</style>
-</head>
-<body>
-<div class="app">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VM 2026 Tipping</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #0a0e1a;
+        --surface: #111827;
+        --surface2: #1a2235;
+        --border: #2a3550;
+        --text: #e8eaf0;
+        --muted: #6b7a99;
+        --gold: #f5c842;
+        --green: #22c55e;
+        --red: #ef4444;
+        --blue: #3b82f6;
+      }
+      body {
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .app {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0 12px 60px;
+      }
+      .header {
+        text-align: center;
+        padding: 28px 0 20px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 20px;
+      }
+      .header h1 {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        color: var(--gold);
+      }
+      .header p {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .deadline-badge {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 4px 12px;
+        background: #1a2235;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .deadline-badge span {
+        color: var(--gold);
+        font-weight: 600;
+      }
+      .admin-bar {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+      }
+      .admin-bar h3 {
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 10px;
+      }
+      .admin-pin-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+      }
+      .admin-pin-row input {
+        width: 120px;
+        padding: 6px 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+      .admin-pin-btn {
+        padding: 6px 14px;
+        background: var(--gold);
+        color: #111;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .admin-tools {
+        display: none;
+      }
+      .admin-tools.visible {
+        display: block;
+      }
+      .admin-section {
+        margin-top: 12px;
+      }
+      .admin-section label {
+        font-size: 12px;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .result-entry {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+      }
+      .result-entry .match-label {
+        font-size: 12px;
+        color: var(--muted);
+        min-width: 190px;
+      }
+      .result-entry select {
+        padding: 5px 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+      .save-btn {
+        margin-top: 10px;
+        padding: 8px 18px;
+        background: var(--green);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .tabs {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 20px;
+        background: var(--surface);
+        border-radius: 10px;
+        padding: 4px;
+      }
+      .tab {
+        flex: 1;
+        text-align: center;
+        padding: 8px 4px;
+        font-size: 13px;
+        cursor: pointer;
+        border: none;
+        background: none;
+        color: var(--muted);
+        border-radius: 7px;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .tab.active {
+        background: var(--surface2);
+        color: var(--text);
+        font-weight: 600;
+        border: 1px solid var(--border);
+      }
+      .section {
+        display: none;
+      }
+      .section.active {
+        display: block;
+      }
+      .name-screen {
+        text-align: center;
+        padding: 30px 20px;
+      }
+      .name-screen h2 {
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+      .name-screen p {
+        font-size: 14px;
+        color: var(--muted);
+        margin-bottom: 24px;
+      }
+      .big-input {
+        width: 100%;
+        max-width: 300px;
+        padding: 12px 16px;
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 16px;
+        text-align: center;
+      }
+      .big-input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+      .start-btn {
+        display: block;
+        margin: 16px auto 0;
+        padding: 12px 32px;
+        background: var(--gold);
+        color: #111;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .entry-chip {
+        display: inline-block;
+        padding: 6px 14px;
+        margin: 4px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .entry-chip:hover {
+        border-color: var(--gold);
+        color: var(--gold);
+      }
+      .group-block {
+        margin-bottom: 24px;
+      }
+      .group-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--gold);
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+      }
+      .match-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 5px;
+      }
+      .team-name {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .team-name.right {
+        text-align: right;
+      }
+      .result-btns {
+        display: flex;
+        gap: 3px;
+      }
+      .rb {
+        width: 30px;
+        height: 26px;
+        font-size: 11px;
+        font-weight: 700;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        background: none;
+        cursor: pointer;
+        color: var(--muted);
+        transition: all 0.1s;
+      }
+      .rb:hover {
+        background: var(--surface2);
+      }
+      .rb.sel-W {
+        background: #16421f;
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .rb.sel-D {
+        background: #1a2d4a;
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .rb.sel-L {
+        background: #3b1a1a;
+        border-color: var(--red);
+        color: var(--red);
+      }
+      .match-played {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+        margin-left: 4px;
+      }
+      .match-played.W {
+        background: #16421f;
+        color: var(--green);
+      }
+      .match-played.D {
+        background: #1a2d4a;
+        color: var(--blue);
+      }
+      .match-played.L {
+        background: #3b1a1a;
+        color: var(--red);
+      }
+      .tiebreak-block {
+        background: var(--surface2);
+        border: 1px solid #f5c84240;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+      }
+      .tiebreak-title {
+        font-size: 12px;
+        color: var(--gold);
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      .tiebreak-note {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .drag-list {
+        list-style: none;
+      }
+      .drag-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        margin-bottom: 4px;
+        cursor: grab;
+        user-select: none;
+        font-size: 13px;
+        transition: opacity 0.1s;
+      }
+      .drag-item.locked {
+        cursor: default;
+        opacity: 0.6;
+        border-style: dashed;
+      }
+      .drag-item.dragging {
+        opacity: 0.3;
+      }
+      .rank-badge {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--surface2);
+        font-size: 11px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .drag-handle {
+        color: var(--muted);
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+      .ko-round {
+        margin-bottom: 20px;
+      }
+      .ko-round-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+      }
+      .ko-match {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 5px;
+      }
+      .ko-match-label {
+        font-size: 10px;
+        color: var(--muted);
+        min-width: 36px;
+        flex-shrink: 0;
+      }
+      .ko-teams {
+        font-size: 12px;
+        flex: 1;
+        min-width: 0;
+      }
+      .ko-select {
+        width: 160px;
+        flex-shrink: 0;
+        padding: 6px 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 12px;
+      }
+      .ko-select:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+      .third-intro {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 12px;
+        padding: 10px;
+        background: var(--surface);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      }
+      .third-list {
+        list-style: none;
+      }
+      .third-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        margin-bottom: 4px;
+        font-size: 13px;
+        user-select: none;
+      }
+      .third-item.can-drag {
+        cursor: grab;
+      }
+      .third-item.dragging {
+        opacity: 0.3;
+      }
+      .third-item.qualifies {
+        border-color: var(--green);
+      }
+      .third-item.eliminated {
+        opacity: 0.5;
+      }
+      .award-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 6px;
+      }
+      .award-icon {
+        font-size: 18px;
+        width: 28px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+      .award-label {
+        font-size: 13px;
+        min-width: 155px;
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .award-input {
+        flex: 1;
+        padding: 6px 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+      .award-input:focus {
+        outline: none;
+        border-color: var(--gold);
+      }
+      .lb-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .lb-row:hover {
+        border-color: var(--blue);
+      }
+      .lb-row.you {
+        border-color: var(--gold);
+      }
+      .lb-rank {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--muted);
+        min-width: 24px;
+        text-align: center;
+      }
+      .lb-rank.top3 {
+        color: var(--gold);
+      }
+      .lb-name {
+        flex: 1;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .lb-pts {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--gold);
+      }
+      .lb-breakdown {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 100;
+        overflow-y: auto;
+        padding: 10px;
+      }
+      .modal-overlay.open {
+        display: block;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin: 10px auto;
+        max-width: 600px;
+        padding: 20px;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .modal-header h2 {
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 22px;
+        cursor: pointer;
+        padding: 0 4px;
+      }
+      .btn-primary {
+        width: 100%;
+        padding: 13px;
+        margin-top: 20px;
+        background: var(--gold);
+        color: #111;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-primary:hover {
+        opacity: 0.9;
+      }
+      .btn-secondary {
+        padding: 8px 18px;
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .btn-secondary:hover {
+        border-color: var(--text);
+      }
+      .progress-wrap {
+        margin: 12px 0;
+      }
+      .progress-bar {
+        height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+      }
+      .progress-fill {
+        height: 100%;
+        background: var(--gold);
+        border-radius: 2px;
+        transition: width 0.3s;
+      }
+      .progress-label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+        text-align: right;
+      }
+      .notice {
+        padding: 10px 14px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 14px;
+      }
+      .notice strong {
+        color: var(--text);
+      }
+      .sep-line {
+        margin: 6px 0;
+        font-size: 11px;
+        color: var(--muted);
+        text-align: center;
+        padding: 4px 0;
+        border-top: 1px dashed var(--border);
+        border-bottom: 1px dashed var(--border);
+      }
+      .chip {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .chip-gold {
+        background: #3d2e00;
+        color: var(--gold);
+      }
+      .chip-green {
+        background: #16421f;
+        color: var(--green);
+      }
+      .chip-blue {
+        background: #1a2d4a;
+        color: var(--blue);
+      }
+      .chip-red {
+        background: #3b1a1a;
+        color: var(--red);
+      }
+      .mt8 {
+        margin-top: 8px;
+      }
+      .mt16 {
+        margin-top: 16px;
+      }
+      .hide {
+        display: none !important;
+      }
+      select option {
+        background: #111827;
+      }
+      @media (max-width: 480px) {
+        .tab {
+          font-size: 11px;
+          padding: 7px 2px;
+        }
+        .team-name {
+          font-size: 12px;
+        }
+        .award-label {
+          min-width: 110px;
+          font-size: 12px;
+        }
+        .ko-select {
+          width: 130px;
+          font-size: 11px;
+        }
+        .ko-teams {
+          font-size: 11px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="admin-bar" id="adminBar">
+        <h3>🔐 Admin</h3>
+        <div class="admin-pin-row">
+          <input type="password" id="adminPinInput" placeholder="PIN" />
+          <button class="admin-pin-btn" onclick="checkAdminPin()">
+            Lås opp
+          </button>
+          <button
+            class="admin-pin-btn"
+            style="
+              background: var(--surface2);
+              color: var(--muted);
+              border: 1px solid var(--border);
+            "
+            onclick="toggleAdminBar()"
+          >
+            Skjul
+          </button>
+        </div>
+        <div class="admin-tools" id="adminTools">
+          <div class="admin-section">
+            <label>Legg inn kampresultater</label>
+            <div id="resultEntries"></div>
+            <button class="save-btn" onclick="saveResults()">
+              Lagre resultater og oppdater tabell
+            </button>
+          </div>
+          <div
+            class="admin-section mt16"
+            style="padding-top: 12px; border-top: 1px solid var(--border)"
+          >
+            <label>Legg til bonuspoeng for spesialspill (navn + poeng)</label>
+            <div
+              style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px"
+            >
+              <input
+                id="awardName"
+                placeholder="Navn"
+                style="
+                  padding: 6px 10px;
+                  background: var(--bg);
+                  border: 1px solid var(--border);
+                  border-radius: 6px;
+                  color: var(--text);
+                  font-size: 13px;
+                  width: 140px;
+                "
+              />
+              <input
+                id="awardPts"
+                type="number"
+                placeholder="Poeng"
+                style="
+                  padding: 6px 10px;
+                  background: var(--bg);
+                  border: 1px solid var(--border);
+                  border-radius: 6px;
+                  color: var(--text);
+                  font-size: 13px;
+                  width: 80px;
+                "
+              />
+              <button class="save-btn" onclick="addAwardPoints()">
+                Legg til
+              </button>
+            </div>
+          </div>
+          <div
+            class="admin-section mt16"
+            style="padding-top: 12px; border-top: 1px solid var(--border)"
+          >
+            <label>Farlig sone</label>
+            <button
+              onclick="
+                if (confirm('Nullstill ALL data?')) {
+                  localStorage.clear();
+                  location.reload();
+                }
+              "
+              style="
+                margin-top: 6px;
+                padding: 6px 14px;
+                background: #3b1a1a;
+                border: 1px solid var(--red);
+                border-radius: 6px;
+                color: var(--red);
+                font-size: 12px;
+                cursor: pointer;
+              "
+            >
+              Nullstill all data
+            </button>
+          </div>
+        </div>
+      </div>
 
-<div class="admin-bar" id="adminBar">
-  <h3>🔐 Admin</h3>
-  <div class="admin-pin-row">
-    <input type="password" id="adminPinInput" placeholder="PIN" />
-    <button class="admin-pin-btn" onclick="checkAdminPin()">Lås opp</button>
-    <button class="admin-pin-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="toggleAdminBar()">Skjul</button>
-  </div>
-  <div class="admin-tools" id="adminTools">
-    <div class="admin-section">
-      <label>Legg inn kampresultater</label>
-      <div id="resultEntries"></div>
-      <button class="save-btn" onclick="saveResults()">Lagre resultater og oppdater tabell</button>
-    </div>
-    <div class="admin-section mt16" style="padding-top:12px;border-top:1px solid var(--border)">
-      <label>Legg til bonuspoeng for spesialspill (navn + poeng)</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        <input id="awardName" placeholder="Navn" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;width:140px">
-        <input id="awardPts" type="number" placeholder="Poeng" style="padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;width:80px">
-        <button class="save-btn" onclick="addAwardPoints()">Legg til</button>
+      <div class="header">
+        <h1>⚽ VM 2026 Tipping</h1>
+        <p>USA · Canada · Mexico · 11. juni – 19. juli 2026</p>
+        <div class="deadline-badge" id="deadlineBadge">
+          Frist: <span>12. juni kl. 21:00 (Canada–Bosnia)</span>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('home')">Hjem</button>
+        <button class="tab" onclick="showTab('groups')">Grupper</button>
+        <button class="tab" onclick="showTab('knockout')">Sluttspill</button>
+        <button class="tab" onclick="showTab('awards')">Priser</button>
+        <button class="tab" onclick="showTab('leaderboard')">Tabell</button>
+      </div>
+
+      <!-- HOME -->
+      <div class="section active" id="sec-home">
+        <div id="nameScreen">
+          <div class="name-screen">
+            <h2>Skriv inn navnet ditt</h2>
+            <p>
+              Tipp alle gruppekamper, sluttspillet og prisutdelinger.<br />Ingen
+              innlogging — bare skriv navnet ditt.
+            </p>
+            <input
+              class="big-input"
+              id="nameInput"
+              placeholder="Ditt navn"
+              maxlength="30"
+              onkeydown="if (event.key === 'Enter') startEntry();"
+            />
+            <button class="start-btn" onclick="startEntry()">
+              Start tipping →
+            </button>
+          </div>
+          <div
+            id="existingEntries"
+            style="text-align: center; margin-top: 8px"
+          ></div>
+        </div>
+        <div id="homeInfo" class="hide">
+          <div class="notice">
+            <strong>Hei, <span id="currentNameDisplay"></span>!</strong><br />
+            Bruk fanene over for å fylle inn tipsene dine.<br />
+            <span id="homeProgressText"></span>
+          </div>
+          <div
+            style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap"
+          >
+            <button class="btn-secondary" onclick="showTab('groups')">
+              → Grupper
+            </button>
+            <button class="btn-secondary" onclick="showTab('knockout')">
+              → Sluttspill
+            </button>
+            <button class="btn-secondary" onclick="showTab('awards')">
+              → Priser
+            </button>
+            <button
+              class="btn-secondary"
+              onclick="switchUser()"
+              style="margin-left: auto"
+            >
+              Bytt bruker
+            </button>
+          </div>
+          <div class="mt16">
+            <div class="notice" style="margin-bottom: 0">
+              <strong>Poenggivning:</strong> 1p riktig gruppefase W/U/T · 2p
+              riktig videre i R32 · 3p riktig videre i R16 · 5p riktig i QF/SF ·
+              7p riktig finalist · 10p riktig mester · Spesialspill: legges til
+              manuelt av admin
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUPS -->
+      <div class="section" id="sec-groups">
+        <div id="lockedNotice" class="notice hide">
+          🔒 <strong>Tipping er stengt.</strong> Turneringen har startet.
+        </div>
+        <div id="groupStageContent"></div>
+        <div class="progress-wrap">
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              id="groupProgress"
+              style="width: 0%"
+            ></div>
+          </div>
+          <div class="progress-label" id="groupProgressLabel">
+            0 / 36 kamper tippet
+          </div>
+        </div>
+        <div id="tiebreakSection" class="mt16">
+          <div
+            style="
+              font-size: 11px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              color: var(--gold);
+              margin-bottom: 10px;
+              padding-bottom: 6px;
+              border-bottom: 1px solid var(--border);
+            "
+          >
+            Poengtying innad i grupper
+          </div>
+          <div class="notice">
+            Når lag er likt på poeng:
+            <strong>dra for å rangere etter beste Målforskjell</strong>.
+          </div>
+          <div id="tiebreakContent"></div>
+        </div>
+        <button class="btn-primary" onclick="showTab('knockout')">
+          Neste: Sluttspill →
+        </button>
+      </div>
+
+      <!-- KNOCKOUT -->
+      <div class="section" id="sec-knockout">
+        <div class="ko-round">
+          <div class="ko-round-title">Beste 8 tredjeplasserte lag</div>
+          <div class="third-intro">
+            12 grupper gir hvert sitt tredjeplass-lag. De
+            <strong>8 beste</strong> går videre. Lag med mer poeng er låst.
+            <strong>Dra for å rangere</strong> lag med like poeng etter beste
+            Målforskjell.
+          </div>
+          <div id="thirdPlaceContent"></div>
+        </div>
+        <div class="ko-round">
+          <div class="ko-round-title">Runde av 32</div>
+          <div class="notice" style="margin-bottom: 10px">
+            Kampoppsettet genereres automatisk fra FIFA-matrisen basert på
+            hvilke grupper de beste tredjeplass-lagene kom fra.
+          </div>
+          <div id="r32Content"></div>
+        </div>
+        <div class="ko-round">
+          <div class="ko-round-title">Runde av 16</div>
+          <div id="r16Content"></div>
+        </div>
+        <div class="ko-round">
+          <div class="ko-round-title">Kvartfinaler</div>
+          <div id="qfContent"></div>
+        </div>
+        <div class="ko-round">
+          <div class="ko-round-title">Semifinaler</div>
+          <div id="sfContent"></div>
+        </div>
+        <div class="ko-round">
+          <div class="ko-round-title">Finale</div>
+          <div id="finalContent"></div>
+        </div>
+        <button class="btn-primary" onclick="showTab('awards')">
+          Neste: Spesialspill →
+        </button>
+      </div>
+
+      <!-- AWARDS -->
+      <div class="section" id="sec-awards">
+        <div class="notice">
+          Fritek-svar. Skriv navn som du vil — f.eks. "Harry Kane" eller "Kane
+          (England)". Admin poengsetter dette manuelt.
+        </div>
+        <div class="mt16" id="awardsContent"></div>
+        <button class="btn-primary" onclick="submitPredictions()">
+          ✓ Send inn tipsene mine
+        </button>
+      </div>
+
+      <!-- LEADERBOARD -->
+      <div class="section" id="sec-leaderboard">
+        <div class="notice" style="margin-bottom: 14px">
+          <strong>Klikk på et navn</strong> for å se hele tipsen.
+        </div>
+        <div id="leaderboardContent"></div>
+      </div>
+
+      <!-- MODAL -->
+      <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+          <div class="modal-header">
+            <h2 id="modalTitle">Tips</h2>
+            <button class="modal-close" onclick="closeModal()">×</button>
+          </div>
+          <div id="modalBody"></div>
+        </div>
       </div>
     </div>
-    <div class="admin-section mt16" style="padding-top:12px;border-top:1px solid var(--border)">
-      <label>Farlig sone</label>
-      <button onclick="if(confirm('Nullstill ALL data?')){localStorage.clear();location.reload()}" style="margin-top:6px;padding:6px 14px;background:#3b1a1a;border:1px solid var(--red);border-radius:6px;color:var(--red);font-size:12px;cursor:pointer">Nullstill all data</button>
-    </div>
-  </div>
-</div>
 
-<div class="header">
-  <h1>⚽ VM 2026 Tipping</h1>
-  <p>USA · Canada · Mexico · 11. juni – 19. juli 2026</p>
-  <div class="deadline-badge" id="deadlineBadge">Frist: <span>12. juni kl. 21:00 (Canada–Bosnia)</span></div>
-</div>
+    <script>
+      // ============================================================
+      // DATA — ALL TEAM NAMES ASCII-SAFE (no apostrophes)
+      // ============================================================
+      const GROUPS = {
+        A: {
+          name: "Gruppe A",
+          teams: ["Mexico", "Sør-Korea", "Sør-Afrika", "Tsjekkia"],
+          matches: [
+            ["Mexico", "Sør-Afrika"],
+            ["Sør-Korea", "Tsjekkia"],
+            ["Mexico", "Sør-Korea"],
+            ["Sør-Afrika", "Tsjekkia"],
+            ["Mexico", "Tsjekkia"],
+            ["Sør-Korea", "Sør-Afrika"],
+          ],
+        },
+        B: {
+          name: "Gruppe B",
+          teams: ["Canada", "Bosnia og Hercegovina", "Sveits", "Qatar"],
+          matches: [
+            ["Canada", "Bosnia og Hercegovina"],
+            ["Sveits", "Qatar"],
+            ["Canada", "Sveits"],
+            ["Bosnia og Hercegovina", "Qatar"],
+            ["Canada", "Qatar"],
+            ["Sveits", "Bosnia og Hercegovina"],
+          ],
+        },
+        C: {
+          name: "Gruppe C",
+          teams: ["Brasil", "Marokko", "Skottland", "Haiti"],
+          matches: [
+            ["Brasil", "Marokko"],
+            ["Skottland", "Haiti"],
+            ["Brasil", "Skottland"],
+            ["Marokko", "Haiti"],
+            ["Brasil", "Haiti"],
+            ["Skottland", "Marokko"],
+          ],
+        },
+        D: {
+          name: "Gruppe D",
+          teams: ["USA", "Paraguay", "Australia", "Tyrkia"],
+          matches: [
+            ["USA", "Paraguay"],
+            ["Australia", "Tyrkia"],
+            ["USA", "Australia"],
+            ["Paraguay", "Tyrkia"],
+            ["USA", "Tyrkia"],
+            ["Paraguay", "Australia"],
+          ],
+        },
+        E: {
+          name: "Gruppe E",
+          teams: ["Tyskland", "Ecuador", "Elfenbenskysten", "Curacao"],
+          matches: [
+            ["Tyskland", "Curacao"],
+            ["Elfenbenskysten", "Ecuador"],
+            ["Tyskland", "Ecuador"],
+            ["Elfenbenskysten", "Curacao"],
+            ["Tyskland", "Elfenbenskysten"],
+            ["Ecuador", "Curacao"],
+          ],
+        },
+        F: {
+          name: "Gruppe F",
+          teams: ["Nederland", "Japan", "Sverige", "Tunisia"],
+          matches: [
+            ["Nederland", "Japan"],
+            ["Sverige", "Tunisia"],
+            ["Nederland", "Sverige"],
+            ["Japan", "Tunisia"],
+            ["Nederland", "Tunisia"],
+            ["Sverige", "Japan"],
+          ],
+        },
+        G: {
+          name: "Gruppe G",
+          teams: ["Belgia", "Iran", "Egypt", "New Zealand"],
+          matches: [
+            ["Belgia", "Egypt"],
+            ["Iran", "New Zealand"],
+            ["Belgia", "Iran"],
+            ["Egypt", "New Zealand"],
+            ["Belgia", "New Zealand"],
+            ["Iran", "Egypt"],
+          ],
+        },
+        H: {
+          name: "Gruppe H",
+          teams: ["Spania", "Uruguay", "Saudi-Arabia", "Kapp Verde"],
+          matches: [
+            ["Spania", "Kapp Verde"],
+            ["Saudi-Arabia", "Uruguay"],
+            ["Spania", "Saudi-Arabia"],
+            ["Kapp Verde", "Uruguay"],
+            ["Spania", "Uruguay"],
+            ["Saudi-Arabia", "Kapp Verde"],
+          ],
+        },
+        I: {
+          name: "Gruppe I",
+          teams: ["Frankrike", "Senegal", "Norge", "Irak"],
+          matches: [
+            ["Frankrike", "Senegal"],
+            ["Irak", "Norge"],
+            ["Frankrike", "Irak"],
+            ["Senegal", "Norge"],
+            ["Frankrike", "Norge"],
+            ["Senegal", "Irak"],
+          ],
+        },
+        J: {
+          name: "Gruppe J",
+          teams: ["Argentina", "Algerie", "Østerrike", "Jordan"],
+          matches: [
+            ["Argentina", "Algerie"],
+            ["Østerrike", "Jordan"],
+            ["Argentina", "Østerrike"],
+            ["Algerie", "Jordan"],
+            ["Argentina", "Jordan"],
+            ["Algerie", "Østerrike"],
+          ],
+        },
+        K: {
+          name: "Gruppe K",
+          teams: ["Portugal", "Colombia", "DR Kongo", "Usbekistan"],
+          matches: [
+            ["Portugal", "DR Kongo"],
+            ["Usbekistan", "Colombia"],
+            ["Portugal", "Usbekistan"],
+            ["DR Kongo", "Colombia"],
+            ["Portugal", "Colombia"],
+            ["DR Kongo", "Usbekistan"],
+          ],
+        },
+        L: {
+          name: "Gruppe L",
+          teams: ["England", "Kroatia", "Ghana", "Panama"],
+          matches: [
+            ["England", "Kroatia"],
+            ["Ghana", "Panama"],
+            ["England", "Ghana"],
+            ["Kroatia", "Panama"],
+            ["England", "Panama"],
+            ["Kroatia", "Ghana"],
+          ],
+        },
+      };
+      const GROUP_KEYS = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+      ];
 
-<div class="tabs">
-  <button class="tab active" onclick="showTab('home')">Hjem</button>
-  <button class="tab" onclick="showTab('groups')">Grupper</button>
-  <button class="tab" onclick="showTab('knockout')">Sluttspill</button>
-  <button class="tab" onclick="showTab('awards')">Priser</button>
-  <button class="tab" onclick="showTab('leaderboard')">Tabell</button>
-</div>
+      const AWARDS = [
+        { id: "winner", icon: "🏆", label: "Turneringsvinner" },
+        { id: "topscorer", icon: "👟", label: "Toppscorer" },
+        { id: "mvp", icon: "🏅", label: "Beste spiller (MVP)" },
+        { id: "gk", icon: "🧤", label: "Beste målvakt" },
+        { id: "young", icon: "✨", label: "Årets Øyeblikk" },
+        { id: "cards", icon: "🟨", label: "Mesterskapets bassenggutt" },
+        { id: "norwagoals", icon: "⚽", label: "Mål scorer Norge totalt?" },
+      ];
 
-<!-- HOME -->
-<div class="section active" id="sec-home">
-  <div id="nameScreen">
-    <div class="name-screen">
-      <h2>Skriv inn navnet ditt</h2>
-      <p>Tipp alle gruppekamper, sluttspillet og prisutdelinger.<br>Ingen innlogging — bare skriv navnet ditt.</p>
-      <input class="big-input" id="nameInput" placeholder="Ditt navn" maxlength="30" onkeydown="if(event.key==='Enter')startEntry()" />
-      <button class="start-btn" onclick="startEntry()">Start tipping →</button>
-    </div>
-    <div id="existingEntries" style="text-align:center;margin-top:8px"></div>
-  </div>
-  <div id="homeInfo" class="hide">
-    <div class="notice">
-      <strong>Hei, <span id="currentNameDisplay"></span>!</strong><br>
-      Bruk fanene over for å fylle inn tipsene dine.<br>
-      <span id="homeProgressText"></span>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn-secondary" onclick="showTab('groups')">→ Grupper</button>
-      <button class="btn-secondary" onclick="showTab('knockout')">→ Sluttspill</button>
-      <button class="btn-secondary" onclick="showTab('awards')">→ Priser</button>
-      <button class="btn-secondary" onclick="switchUser()" style="margin-left:auto">Bytt bruker</button>
-    </div>
-    <div class="mt16">
-      <div class="notice" style="margin-bottom:0">
-        <strong>Poenggivning:</strong> 1p riktig gruppefase W/U/T · 2p riktig videre i R32 · 3p riktig videre i R16 · 5p riktig i QF/SF · 7p riktig finalist · 10p riktig mester · Spesialspill: legges til manuelt av admin
-      </div>
-    </div>
-  </div>
-</div>
+      // FIFA R32 matrix — fixed matchups
+      // type 'fixed' = group winner/runner-up vs runner-up
+      // type '3rd' = group winner vs 3rd-place (pool defined in 'pool' array)
+      // R32 matchups — exact from official FIFA schedule (Sling/ESPN sources)
+      const R32 = [
+        { id: "r32_73", label: "M73", hSlot: "2A", aSlot: "2B", aPool: null }, // Runner-up A vs Runner-up B
+        {
+          id: "r32_74",
+          label: "M74",
+          hSlot: "1E",
+          aSlot: null,
+          aPool: ["A", "B", "C", "D", "F"],
+        }, // 1E vs best 3rd ABCDF
+        { id: "r32_75", label: "M75", hSlot: "1F", aSlot: "2C", aPool: null }, // 1F vs 2C — note: source says "F Winner vs C Runner-Up"
+        { id: "r32_76", label: "M76", hSlot: "1C", aSlot: "2F", aPool: null }, // 1C vs 2F
+        {
+          id: "r32_77",
+          label: "M77",
+          hSlot: "1I",
+          aSlot: null,
+          aPool: ["C", "D", "F", "G", "H"],
+        }, // 1I vs best 3rd CDFGH
+        { id: "r32_78", label: "M78", hSlot: "2E", aSlot: "2I", aPool: null }, // 2E vs 2I
+        {
+          id: "r32_79",
+          label: "M79",
+          hSlot: "1A",
+          aSlot: null,
+          aPool: ["C", "E", "F", "H", "I"],
+        }, // 1A vs best 3rd CEFHI
+        {
+          id: "r32_80",
+          label: "M80",
+          hSlot: "1L",
+          aSlot: null,
+          aPool: ["E", "H", "I", "J", "K"],
+        }, // 1L vs best 3rd EHIJK
+        {
+          id: "r32_81",
+          label: "M81",
+          hSlot: "1D",
+          aSlot: null,
+          aPool: ["B", "E", "F", "I", "J"],
+        }, // 1D vs best 3rd BEFIJ
+        {
+          id: "r32_82",
+          label: "M82",
+          hSlot: "1G",
+          aSlot: null,
+          aPool: ["A", "E", "H", "I", "J"],
+        }, // 1G vs best 3rd AEHIJ
+        { id: "r32_83", label: "M83", hSlot: "2K", aSlot: "2L", aPool: null }, // 2K vs 2L
+        { id: "r32_84", label: "M84", hSlot: "1H", aSlot: "2J", aPool: null }, // 1H vs 2J (H Winner vs J Runner-up)
+        {
+          id: "r32_85",
+          label: "M85",
+          hSlot: "1B",
+          aSlot: null,
+          aPool: ["E", "F", "G", "I", "J"],
+        }, // 1B vs best 3rd EFGIJ
+        { id: "r32_86", label: "M86", hSlot: "1J", aSlot: "2H", aPool: null }, // 1J vs 2H (J Winner vs H Runner-up)
+        {
+          id: "r32_87",
+          label: "M87",
+          hSlot: "1K",
+          aSlot: null,
+          aPool: ["D", "E", "I", "J", "L"],
+        }, // 1K vs best 3rd DEIJL
+        { id: "r32_88", label: "M88", hSlot: "2D", aSlot: "2G", aPool: null }, // 2D vs 2G
+      ];
 
-<!-- GROUPS -->
-<div class="section" id="sec-groups">
-  <div id="lockedNotice" class="notice hide">🔒 <strong>Tipping er stengt.</strong> Turneringen har startet.</div>
-  <div id="groupStageContent"></div>
-  <div class="progress-wrap">
-    <div class="progress-bar"><div class="progress-fill" id="groupProgress" style="width:0%"></div></div>
-    <div class="progress-label" id="groupProgressLabel">0 / 36 kamper tippet</div>
-  </div>
-  <div id="tiebreakSection" class="mt16">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">Poengtying innad i grupper</div>
-    <div class="notice">Når lag er likt på poeng: <strong>dra for å rangere etter beste Målforskjell</strong>.</div>
-    <div id="tiebreakContent"></div>
-  </div>
-  <button class="btn-primary" onclick="showTab('knockout')">Neste: Sluttspill →</button>
-</div>
+      const ADMIN_PIN = "6767"; // Drit i Hans
+      const DEADLINE = new Date("2026-06-12T21:00:00");
+      let currentUser = null;
 
-<!-- KNOCKOUT -->
-<div class="section" id="sec-knockout">
-  <div class="ko-round">
-    <div class="ko-round-title">Beste 8 tredjeplasserte lag</div>
-    <div class="third-intro">12 grupper gir hvert sitt tredjeplass-lag. De <strong>8 beste</strong> går videre. Lag med mer poeng er låst. <strong>Dra for å rangere</strong> lag med like poeng etter beste Målforskjell.</div>
-    <div id="thirdPlaceContent"></div>
-  </div>
-  <div class="ko-round">
-    <div class="ko-round-title">Runde av 32</div>
-    <div class="notice" style="margin-bottom:10px">Kampoppsettet genereres automatisk fra FIFA-matrisen basert på hvilke grupper de beste tredjeplass-lagene kom fra.</div>
-    <div id="r32Content"></div>
-  </div>
-  <div class="ko-round">
-    <div class="ko-round-title">Runde av 16</div>
-    <div id="r16Content"></div>
-  </div>
-  <div class="ko-round">
-    <div class="ko-round-title">Kvartfinaler</div>
-    <div id="qfContent"></div>
-  </div>
-  <div class="ko-round">
-    <div class="ko-round-title">Semifinaler</div>
-    <div id="sfContent"></div>
-  </div>
-  <div class="ko-round">
-    <div class="ko-round-title">Finale</div>
-    <div id="finalContent"></div>
-  </div>
-  <button class="btn-primary" onclick="showTab('awards')">Neste: Spesialspill →</button>
-</div>
+      // ============================================================
+      // SUPABASE CONFIG
+      // ============================================================
+      const SB_URL = "https://qmgbctsklvivfihjkgas.supabase.co";
+      const SB_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZ2JjdHNrbHZpdmZpaGprZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTEwMDQsImV4cCI6MjA5Njc2NzAwNH0.jExwsv7huq17oU6xTyLTPK57akYfu42ClQp5GEgiLl0";
+      const SB_HDR = {
+        apikey: SB_KEY,
+        Authorization: "Bearer " + SB_KEY,
+        "Content-Type": "application/json",
+      };
 
-<!-- AWARDS -->
-<div class="section" id="sec-awards">
-  <div class="notice">Fritek-svar. Skriv navn som du vil — f.eks. "Harry Kane" eller "Kane (England)". Admin poengsetter dette manuelt.</div>
-  <div class="mt16" id="awardsContent"></div>
-  <button class="btn-primary" onclick="submitPredictions()">✓ Send inn tipsene mine</button>
-</div>
+      async function sbAll(table) {
+        const r = await fetch(SB_URL + "/rest/v1/" + table + "?select=*", {
+          headers: SB_HDR,
+        });
+        return r.ok ? r.json() : [];
+      }
+      async function sbUpsert(table, data) {
+        await fetch(SB_URL + "/rest/v1/" + table, {
+          method: "POST",
+          headers: { ...SB_HDR, Prefer: "resolution=merge-duplicates" },
+          body: JSON.stringify(data),
+        });
+      }
+      async function sbPatch(table, key, val, data) {
+        await fetch(
+          SB_URL +
+            "/rest/v1/" +
+            table +
+            "?" +
+            key +
+            "=eq." +
+            encodeURIComponent(val),
+          { method: "PATCH", headers: SB_HDR, body: JSON.stringify(data) },
+        );
+      }
 
-<!-- LEADERBOARD -->
-<div class="section" id="sec-leaderboard">
-  <div class="notice" style="margin-bottom:14px"><strong>Klikk på et navn</strong> for å se hele tipsen.</div>
-  <div id="leaderboardContent"></div>
-</div>
+      // ============================================================
+      // STORAGE — Supabase backend, localStorage for instant UI response
+      // ============================================================
+      function lsGet(k, d) {
+        try {
+          return JSON.parse(localStorage.getItem(k)) || d;
+        } catch {
+          return d;
+        }
+      }
+      function lsSet(k, v) {
+        localStorage.setItem(k, JSON.stringify(v));
+      }
 
-<!-- MODAL -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modalTitle">Tips</h2>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div id="modalBody"></div>
-  </div>
-</div>
-</div>
+      function rowToUser(r) {
+        return {
+          name: r.name,
+          groupPicks: r.group_picks || {},
+          tiebreaks: r.tiebreaks || {},
+          thirdRank: r.third_rank || [],
+          koPicks: r.ko_picks || {},
+          awards: r.awards || {},
+          awardBonus: r.award_bonus || 0,
+          submitted: r.submitted || false,
+          submittedAt: r.submitted_at || null,
+        };
+      }
+      function userToRow(u) {
+        return {
+          name: u.name,
+          group_picks: u.groupPicks || {},
+          tiebreaks: u.tiebreaks || {},
+          third_rank: u.thirdRank || [],
+          ko_picks: u.koPicks || {},
+          awards: u.awards || {},
+          award_bonus: u.awardBonus || 0,
+          submitted: u.submitted || false,
+          submitted_at: u.submittedAt || null,
+          updated_at: new Date().toISOString(),
+        };
+      }
 
-<script>
-// ============================================================
-// DATA — ALL TEAM NAMES ASCII-SAFE (no apostrophes)
-// ============================================================
-const GROUPS = {
-  A:{name:'Gruppe A',teams:['Mexico','Sør-Korea','Sør-Afrika','Tsjekkia'],
-    matches:[['Mexico','Sør-Afrika'],['Sør-Korea','Tsjekkia'],['Mexico','Sør-Korea'],['Sør-Afrika','Tsjekkia'],['Mexico','Tsjekkia'],['Sør-Korea','Sør-Afrika']]},
-  B:{name:'Gruppe B',teams:['Canada','Bosnia og Hercegovina','Sveits','Qatar'],
-    matches:[['Canada','Bosnia og Hercegovina'],['Sveits','Qatar'],['Canada','Sveits'],['Bosnia og Hercegovina','Qatar'],['Canada','Qatar'],['Sveits','Bosnia og Hercegovina']]},
-  C:{name:'Gruppe C',teams:['Brasil','Marokko','Skottland','Haiti'],
-    matches:[['Brasil','Marokko'],['Skottland','Haiti'],['Brasil','Skottland'],['Marokko','Haiti'],['Brasil','Haiti'],['Skottland','Marokko']]},
-  D:{name:'Gruppe D',teams:['USA','Paraguay','Australia','Tyrkia'],
-    matches:[['USA','Paraguay'],['Australia','Tyrkia'],['USA','Australia'],['Paraguay','Tyrkia'],['USA','Tyrkia'],['Paraguay','Australia']]},
-  E:{name:'Gruppe E',teams:['Tyskland','Ecuador','Elfenbenskysten','Curacao'],
-    matches:[['Tyskland','Curacao'],['Elfenbenskysten','Ecuador'],['Tyskland','Ecuador'],['Elfenbenskysten','Curacao'],['Tyskland','Elfenbenskysten'],['Ecuador','Curacao']]},
-  F:{name:'Gruppe F',teams:['Nederland','Japan','Sverige','Tunisia'],
-    matches:[['Nederland','Japan'],['Sverige','Tunisia'],['Nederland','Sverige'],['Japan','Tunisia'],['Nederland','Tunisia'],['Sverige','Japan']]},
-  G:{name:'Gruppe G',teams:['Belgia','Iran','Egypt','New Zealand'],
-    matches:[['Belgia','Egypt'],['Iran','New Zealand'],['Belgia','Iran'],['Egypt','New Zealand'],['Belgia','New Zealand'],['Iran','Egypt']]},
-  H:{name:'Gruppe H',teams:['Spania','Uruguay','Saudi-Arabia','Kapp Verde'],
-    matches:[['Spania','Kapp Verde'],['Saudi-Arabia','Uruguay'],['Spania','Saudi-Arabia'],['Kapp Verde','Uruguay'],['Spania','Uruguay'],['Saudi-Arabia','Kapp Verde']]},
-  I:{name:'Gruppe I',teams:['Frankrike','Senegal','Norge','Irak'],
-    matches:[['Frankrike','Senegal'],['Irak','Norge'],['Frankrike','Irak'],['Senegal','Norge'],['Frankrike','Norge'],['Senegal','Irak']]},
-  J:{name:'Gruppe J',teams:['Argentina','Algerie','Østerrike','Jordan'],
-    matches:[['Argentina','Algerie'],['Østerrike','Jordan'],['Argentina','Østerrike'],['Algerie','Jordan'],['Argentina','Jordan'],['Algerie','Østerrike']]},
-  K:{name:'Gruppe K',teams:['Portugal','Colombia','DR Kongo','Usbekistan'],
-    matches:[['Portugal','DR Kongo'],['Usbekistan','Colombia'],['Portugal','Usbekistan'],['DR Kongo','Colombia'],['Portugal','Colombia'],['DR Kongo','Usbekistan']]},
-  L:{name:'Gruppe L',teams:['England','Kroatia','Ghana','Panama'],
-    matches:[['England','Kroatia'],['Ghana','Panama'],['England','Ghana'],['Kroatia','Panama'],['England','Panama'],['Kroatia','Ghana']]}
-};
-const GROUP_KEYS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+      async function getAllUsers() {
+        try {
+          const rows = await sbAll("predictions");
+          if (Array.isArray(rows) && rows.length >= 0) {
+            const users = rows.map(rowToUser);
+            lsSet("wc26_users", users);
+            return users;
+          }
+        } catch (e) {}
+        return lsGet("wc26_users", []);
+      }
+      function getUser(name) {
+        return lsGet("wc26_users", []).find((u) => u.name === name) || null;
+      }
+      async function saveUser(u) {
+        const cached = lsGet("wc26_users", []);
+        const i = cached.findIndex((x) => x.name === u.name);
+        if (i >= 0) cached[i] = u;
+        else cached.push(u);
+        lsSet("wc26_users", cached);
+        await sbUpsert("predictions", userToRow(u));
+      }
+      async function getResults() {
+        try {
+          const rows = await sbAll("results");
+          if (Array.isArray(rows) && rows[0]) {
+            lsSet("wc26_results", rows[0].data || {});
+            return rows[0].data || {};
+          }
+        } catch (e) {}
+        return lsGet("wc26_results", {});
+      }
+      async function saveResultsData(r) {
+        lsSet("wc26_results", r);
+        await sbPatch("results", "id", 1, { data: r });
+      }
+      function isLocked() {
+        return new Date() > DEADLINE;
+      }
 
-const AWARDS = [
-  {id:'winner',icon:'🏆',label:'Turneringsvinner'},
-  {id:'topscorer',icon:'👟',label:'Toppscorer'},
-  {id:'mvp',icon:'🏅',label:'Beste spiller (MVP)'},
-  {id:'gk',icon:'🧤',label:'Beste målvakt'},
-  {id:'young',icon:'✨',label:'Årets Øyeblikk'},
-  {id:'cards',icon:'🟨',label:'Mesterskapets bassenggutt'},
-  {id:'norwagoals',icon:'⚽',label:'Mål scorer Norge totalt?'}
-];
+      // ============================================================
+      // INIT
+      // ============================================================
+      window.onload = async function () {
+        updateDeadlineBadge();
+        buildGroupStageUI();
+        buildAwardsUI();
+        buildKoRounds();
+        buildAdminResultEntries();
+        // Load all users from Supabase into local cache first
+        await getAllUsers();
+        const saved = localStorage.getItem("wc26_currentUser");
+        if (saved) {
+          const u = getUser(saved);
+          if (u) {
+            currentUser = u;
+            showHomeInfo();
+          }
+        }
+        renderLeaderboard();
+      };
 
-// FIFA R32 matrix — fixed matchups
-// type 'fixed' = group winner/runner-up vs runner-up
-// type '3rd' = group winner vs 3rd-place (pool defined in 'pool' array)
-// R32 matchups — exact from official FIFA schedule (Sling/ESPN sources)
-const R32 = [
-  {id:'r32_73',label:'M73',hSlot:'2A',aSlot:'2B',aPool:null},   // Runner-up A vs Runner-up B
-  {id:'r32_74',label:'M74',hSlot:'1E',aSlot:null,aPool:['A','B','C','D','F']}, // 1E vs best 3rd ABCDF
-  {id:'r32_75',label:'M75',hSlot:'1F',aSlot:'2C',aPool:null},   // 1F vs 2C — note: source says "F Winner vs C Runner-Up"
-  {id:'r32_76',label:'M76',hSlot:'1C',aSlot:'2F',aPool:null},   // 1C vs 2F
-  {id:'r32_77',label:'M77',hSlot:'1I',aSlot:null,aPool:['C','D','F','G','H']}, // 1I vs best 3rd CDFGH
-  {id:'r32_78',label:'M78',hSlot:'2E',aSlot:'2I',aPool:null},   // 2E vs 2I
-  {id:'r32_79',label:'M79',hSlot:'1A',aSlot:null,aPool:['C','E','F','H','I']}, // 1A vs best 3rd CEFHI
-  {id:'r32_80',label:'M80',hSlot:'1L',aSlot:null,aPool:['E','H','I','J','K']}, // 1L vs best 3rd EHIJK
-  {id:'r32_81',label:'M81',hSlot:'1D',aSlot:null,aPool:['B','E','F','I','J']}, // 1D vs best 3rd BEFIJ
-  {id:'r32_82',label:'M82',hSlot:'1G',aSlot:null,aPool:['A','E','H','I','J']}, // 1G vs best 3rd AEHIJ
-  {id:'r32_83',label:'M83',hSlot:'2K',aSlot:'2L',aPool:null},   // 2K vs 2L
-  {id:'r32_84',label:'M84',hSlot:'1H',aSlot:'2J',aPool:null},   // 1H vs 2J (H Winner vs J Runner-up)
-  {id:'r32_85',label:'M85',hSlot:'1B',aSlot:null,aPool:['E','F','G','I','J']}, // 1B vs best 3rd EFGIJ
-  {id:'r32_86',label:'M86',hSlot:'1J',aSlot:'2H',aPool:null},   // 1J vs 2H (J Winner vs H Runner-up)
-  {id:'r32_87',label:'M87',hSlot:'1K',aSlot:null,aPool:['D','E','I','J','L']}, // 1K vs best 3rd DEIJL
-  {id:'r32_88',label:'M88',hSlot:'2D',aSlot:'2G',aPool:null},   // 2D vs 2G
-];
+      function updateDeadlineBadge() {
+        if (isLocked())
+          document.getElementById("deadlineBadge").innerHTML =
+            '<span style="color:var(--red)">🔒 Tipping stengt</span>';
+      }
 
-const ADMIN_PIN = '6767'; // Drit i Hans
-const DEADLINE = new Date('2026-06-12T21:00:00');
-let currentUser = null;
+      function toggleAdminBar() {
+        document.getElementById("adminBar").style.display = "none";
+      }
+      // Show admin bar via URL param ?admin=1
+      if (location.search.includes("admin"))
+        document.getElementById("adminBar").style.removeProperty("display");
 
-// ============================================================
-// SUPABASE CONFIG
-// ============================================================
-const SB_URL='https://qmgbctsklvivfihjkgas.supabase.co';
-const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtZ2JjdHNrbHZpdmZpaGprZ2FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTEwMDQsImV4cCI6MjA5Njc2NzAwNH0.jExwsv7huq17oU6xTyLTPK57akYfu42ClQp5GEgiLl0';
-const SB_HDR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+      // ============================================================
+      // TABS
+      // ============================================================
+      function showTab(name) {
+        document
+          .querySelectorAll(".section")
+          .forEach((s) => s.classList.remove("active"));
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document.getElementById("sec-" + name).classList.add("active");
+        const tabs = ["home", "groups", "knockout", "awards", "leaderboard"];
+        const idx = tabs.indexOf(name);
+        if (idx >= 0)
+          document.querySelectorAll(".tab")[idx].classList.add("active");
+        if (name === "groups") {
+          loadGroupPredictions().then(() => {
+            updateGroupProgress();
+            refreshTiebreaks();
+          });
+        }
+        if (name === "knockout") {
+          loadKoPredictions();
+          refreshThirdPlace();
+        }
+        if (name === "awards") loadAwards();
+        if (name === "leaderboard") renderLeaderboard();
+      }
 
-async function sbAll(table){
-  const r=await fetch(SB_URL+'/rest/v1/'+table+'?select=*',{headers:SB_HDR});
-  return r.ok?r.json():[];
-}
-async function sbUpsert(table,data){
-  await fetch(SB_URL+'/rest/v1/'+table,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(data)});
-}
-async function sbPatch(table,key,val,data){
-  await fetch(SB_URL+'/rest/v1/'+table+'?'+key+'=eq.'+encodeURIComponent(val),{method:'PATCH',headers:SB_HDR,body:JSON.stringify(data)});
-}
+      // ============================================================
+      // HOME
+      // ============================================================
+      async function startEntry() {
+        const name = document.getElementById("nameInput").value.trim();
+        if (!name) return;
+        let u = getUser(name);
+        if (!u)
+          u = {
+            name,
+            groupPicks: {},
+            tiebreaks: {},
+            thirdRank: [],
+            koPicks: {},
+            awards: {},
+            awardBonus: 0,
+            submitted: false,
+          };
+        currentUser = u;
+        await saveUser(u);
+        localStorage.setItem("wc26_currentUser", name);
+        showHomeInfo();
+        showTab("groups");
+      }
+      function showHomeInfo() {
+        document.getElementById("nameScreen").classList.add("hide");
+        document.getElementById("homeInfo").classList.remove("hide");
+        document.getElementById("currentNameDisplay").textContent =
+          currentUser.name;
+        updateHomeProgress();
+      }
+      function updateHomeProgress() {
+        if (!currentUser) return;
+        const done = Object.keys(currentUser.groupPicks || {}).length;
+        const total = GROUP_KEYS.reduce(
+          (s, g) => s + GROUPS[g].matches.length,
+          0,
+        );
+        document.getElementById("homeProgressText").textContent =
+          `Gruppefase: ${done}/${total} kamper tippet.`;
+      }
+      function switchUser() {
+        currentUser = null;
+        localStorage.removeItem("wc26_currentUser");
+        document.getElementById("nameScreen").classList.remove("hide");
+        document.getElementById("homeInfo").classList.add("hide");
+        document.getElementById("nameInput").value = "";
+        const users = getAllUsers();
+        const el = document.getElementById("existingEntries");
+        if (users.length) {
+          el.innerHTML =
+            '<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Eller velg eksisterende:</div>' +
+            users
+              .map(
+                (u) =>
+                  `<span class="entry-chip" onclick="loadExisting('${u.name}')">${u.name}</span>`,
+              )
+              .join("");
+        }
+      }
+      function loadExisting(name) {
+        const u = getUser(name);
+        if (u) {
+          currentUser = u;
+          localStorage.setItem("wc26_currentUser", name);
+          showHomeInfo();
+          showTab("groups");
+        }
+      }
 
-// ============================================================
-// STORAGE — Supabase backend, localStorage for instant UI response
-// ============================================================
-function lsGet(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}
-function lsSet(k,v){localStorage.setItem(k,JSON.stringify(v))}
-
-function rowToUser(r){
-  return {name:r.name,groupPicks:r.group_picks||{},tiebreaks:r.tiebreaks||{},
-    thirdRank:r.third_rank||[],koPicks:r.ko_picks||{},awards:r.awards||{},
-    awardBonus:r.award_bonus||0,submitted:r.submitted||false,submittedAt:r.submitted_at||null};
-}
-function userToRow(u){
-  return {name:u.name,group_picks:u.groupPicks||{},tiebreaks:u.tiebreaks||{},
-    third_rank:u.thirdRank||[],ko_picks:u.koPicks||{},awards:u.awards||{},
-    award_bonus:u.awardBonus||0,submitted:u.submitted||false,
-    submitted_at:u.submittedAt||null,updated_at:new Date().toISOString()};
-}
-
-async function getAllUsers(){
-  try{
-    const rows=await sbAll('predictions');
-    if(Array.isArray(rows)&&rows.length>=0){
-      const users=rows.map(rowToUser);
-      lsSet('wc26_users',users);
-      return users;
-    }
-  }catch(e){}
-  return lsGet('wc26_users',[]);
-}
-function getUser(name){
-  return lsGet('wc26_users',[]).find(u=>u.name===name)||null;
-}
-async function saveUser(u){
-  const cached=lsGet('wc26_users',[]);
-  const i=cached.findIndex(x=>x.name===u.name);
-  if(i>=0)cached[i]=u;else cached.push(u);
-  lsSet('wc26_users',cached);
-  await sbUpsert('predictions',userToRow(u));
-}
-async function getResults(){
-  try{
-    const rows=await sbAll('results');
-    if(Array.isArray(rows)&&rows[0]){
-      lsSet('wc26_results',rows[0].data||{});
-      return rows[0].data||{};
-    }
-  }catch(e){}
-  return lsGet('wc26_results',{});
-}
-async function saveResultsData(r){
-  lsSet('wc26_results',r);
-  await sbPatch('results','id',1,{data:r});
-}
-function isLocked(){return new Date()>DEADLINE}
-
-// ============================================================
-// INIT
-// ============================================================
-window.onload=async function(){
-  updateDeadlineBadge();
-  buildGroupStageUI();
-  buildAwardsUI();
-  buildKoRounds();
-  buildAdminResultEntries();
-  // Load all users from Supabase into local cache first
-  await getAllUsers();
-  const saved=localStorage.getItem('wc26_currentUser');
-  if(saved){const u=getUser(saved);if(u){currentUser=u;showHomeInfo();}}
-  renderLeaderboard();
-};
-
-function updateDeadlineBadge(){
-  if(isLocked()) document.getElementById('deadlineBadge').innerHTML='<span style="color:var(--red)">🔒 Tipping stengt</span>';
-}
-
-function toggleAdminBar(){document.getElementById('adminBar').style.display='none';}
-// Show admin bar via URL param ?admin=1
-if(location.search.includes('admin'))document.getElementById('adminBar').style.removeProperty('display');
-
-// ============================================================
-// TABS
-// ============================================================
-function showTab(name){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('sec-'+name).classList.add('active');
-  const tabs=['home','groups','knockout','awards','leaderboard'];
-  const idx=tabs.indexOf(name);
-  if(idx>=0) document.querySelectorAll('.tab')[idx].classList.add('active');
-  if(name==='groups'){loadGroupPredictions().then(()=>{updateGroupProgress();refreshTiebreaks();});}
-  if(name==='knockout'){loadKoPredictions();refreshThirdPlace();}
-  if(name==='awards') loadAwards();
-  if(name==='leaderboard') renderLeaderboard();
-}
-
-// ============================================================
-// HOME
-// ============================================================
-function startEntry(){
-  const name=document.getElementById('nameInput').value.trim();
-  if(!name)return;
-  let u=getUser(name);
-  if(!u) u={name,groupPicks:{},tiebreaks:{},thirdRank:[],koPicks:{},awards:{},awardBonus:0,submitted:false};
-  currentUser=u;await saveUser(u);
-  localStorage.setItem('wc26_currentUser',name);
-  showHomeInfo();showTab('groups');
-}
-function showHomeInfo(){
-  document.getElementById('nameScreen').classList.add('hide');
-  document.getElementById('homeInfo').classList.remove('hide');
-  document.getElementById('currentNameDisplay').textContent=currentUser.name;
-  updateHomeProgress();
-}
-function updateHomeProgress(){
-  if(!currentUser)return;
-  const done=Object.keys(currentUser.groupPicks||{}).length;
-  const total=GROUP_KEYS.reduce((s,g)=>s+GROUPS[g].matches.length,0);
-  document.getElementById('homeProgressText').textContent=`Gruppefase: ${done}/${total} kamper tippet.`;
-}
-function switchUser(){
-  currentUser=null;localStorage.removeItem('wc26_currentUser');
-  document.getElementById('nameScreen').classList.remove('hide');
-  document.getElementById('homeInfo').classList.add('hide');
-  document.getElementById('nameInput').value='';
-  const users=getAllUsers();
-  const el=document.getElementById('existingEntries');
-  if(users.length){
-    el.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:8px">Eller velg eksisterende:</div>'+
-      users.map(u=>`<span class="entry-chip" onclick="loadExisting('${u.name}')">${u.name}</span>`).join('');
-  }
-}
-function loadExisting(name){
-  const u=getUser(name);
-  if(u){currentUser=u;localStorage.setItem('wc26_currentUser',name);showHomeInfo();showTab('groups');}
-}
-
-// ============================================================
-// GROUP STAGE UI
-// ============================================================
-function buildGroupStageUI(){
-  const c=document.getElementById('groupStageContent');
-  c.innerHTML='';
-  GROUP_KEYS.forEach(g=>{
-    const grp=GROUPS[g];
-    const block=document.createElement('div');
-    block.className='group-block';
-    const teamList=grp.teams.map(t=>`<span style="font-size:11px;font-weight:400;color:var(--muted)">${t}</span>`).join(' · ');
-    block.innerHTML=`<div class="group-title">${grp.name} &nbsp; ${teamList}</div>`;
-    grp.matches.forEach((pair,i)=>{
-      const key=g+i;
-      const row=document.createElement('div');
-      row.className='match-row';
-      row.id='match-'+key;
-      // Use data attributes to avoid quote issues in onclick
-      row.innerHTML=`
+      // ============================================================
+      // GROUP STAGE UI
+      // ============================================================
+      function buildGroupStageUI() {
+        const c = document.getElementById("groupStageContent");
+        c.innerHTML = "";
+        GROUP_KEYS.forEach((g) => {
+          const grp = GROUPS[g];
+          const block = document.createElement("div");
+          block.className = "group-block";
+          const teamList = grp.teams
+            .map(
+              (t) =>
+                `<span style="font-size:11px;font-weight:400;color:var(--muted)">${t}</span>`,
+            )
+            .join(" · ");
+          block.innerHTML = `<div class="group-title">${grp.name} &nbsp; ${teamList}</div>`;
+          grp.matches.forEach((pair, i) => {
+            const key = g + i;
+            const row = document.createElement("div");
+            row.className = "match-row";
+            row.id = "match-" + key;
+            // Use data attributes to avoid quote issues in onclick
+            row.innerHTML = `
         <span class="team-name">${pair[0]}</span>
         <div class="result-btns">
           <button class="rb" id="rb-${key}-W" data-key="${key}" data-res="W">H</button>
@@ -524,565 +1540,819 @@ function buildGroupStageUI(){
           <button class="rb" id="rb-${key}-L" data-key="${key}" data-res="L">B</button>
         </div>
         <span class="team-name right">${pair[1]}</span>`;
-      // Attach click handlers via JS to avoid any HTML injection / quote issues
-      row.querySelectorAll('.rb').forEach(btn=>{
-        btn.addEventListener('click',()=>pickResult(g,i,btn.dataset.res));
-      });
-      block.appendChild(row);
-    });
-    c.appendChild(block);
-  });
-}
-
-async function loadGroupPredictions(){
-  if(!currentUser)return;
-  const picks=currentUser.groupPicks||{};
-  const results=await getResults();
-  GROUP_KEYS.forEach(g=>{
-    GROUPS[g].matches.forEach((pair,i)=>{
-      const key=g+i;
-      ['W','D','L'].forEach(r=>{
-        const btn=document.getElementById('rb-'+key+'-'+r);
-        if(btn) btn.className='rb'+(picks[key]===r?' sel-'+r:'');
-      });
-      // Show official result if entered
-      const row=document.getElementById('match-'+key);
-      if(row&&results[key]){
-        let badge=row.querySelector('.match-played');
-        if(!badge){badge=document.createElement('span');row.appendChild(badge);}
-        const r=results[key];
-        badge.className='match-played '+r;
-        badge.textContent=r==='W'?pair[0]+' vant':r==='L'?pair[1]+' vant':'Uavgjort';
+            // Attach click handlers via JS to avoid any HTML injection / quote issues
+            row.querySelectorAll(".rb").forEach((btn) => {
+              btn.addEventListener("click", () =>
+                pickResult(g, i, btn.dataset.res),
+              );
+            });
+            block.appendChild(row);
+          });
+          c.appendChild(block);
+        });
       }
-    });
-  });
-  if(isLocked()){
-    document.getElementById('lockedNotice').classList.remove('hide');
-    document.querySelectorAll('.rb').forEach(b=>b.disabled=true);
-  }
-}
 
-function pickResult(g,i,res){
-  if(isLocked())return;
-  if(!currentUser){alert('Skriv inn navnet ditt først.');showTab('home');return;}
-  const key=g+i;
-  ['W','D','L'].forEach(r=>{
-    const btn=document.getElementById('rb-'+key+'-'+r);
-    if(btn) btn.className='rb'+(r===res?' sel-'+r:'');
-  });
-  if(!currentUser.groupPicks) currentUser.groupPicks={};
-  currentUser.groupPicks[key]=res;
-  saveUser(currentUser);
-  updateGroupProgress();
-  refreshTiebreaks();
-}
+      async function loadGroupPredictions() {
+        if (!currentUser) return;
+        const picks = currentUser.groupPicks || {};
+        const results = await getResults();
+        GROUP_KEYS.forEach((g) => {
+          GROUPS[g].matches.forEach((pair, i) => {
+            const key = g + i;
+            ["W", "D", "L"].forEach((r) => {
+              const btn = document.getElementById("rb-" + key + "-" + r);
+              if (btn)
+                btn.className = "rb" + (picks[key] === r ? " sel-" + r : "");
+            });
+            // Show official result if entered
+            const row = document.getElementById("match-" + key);
+            if (row && results[key]) {
+              let badge = row.querySelector(".match-played");
+              if (!badge) {
+                badge = document.createElement("span");
+                row.appendChild(badge);
+              }
+              const r = results[key];
+              badge.className = "match-played " + r;
+              badge.textContent =
+                r === "W"
+                  ? pair[0] + " vant"
+                  : r === "L"
+                    ? pair[1] + " vant"
+                    : "Uavgjort";
+            }
+          });
+        });
+        if (isLocked()) {
+          document.getElementById("lockedNotice").classList.remove("hide");
+          document.querySelectorAll(".rb").forEach((b) => (b.disabled = true));
+        }
+      }
 
-function updateGroupProgress(){
-  const done=Object.keys(currentUser?.groupPicks||{}).length;
-  const total=GROUP_KEYS.reduce((s,g)=>s+GROUPS[g].matches.length,0);
-  document.getElementById('groupProgress').style.width=Math.round(done/total*100)+'%';
-  document.getElementById('groupProgressLabel').textContent=`${done} / ${total} kamper tippet`;
-}
-
-// ============================================================
-// GROUP TABLE CALCULATION
-// ============================================================
-function calcGroupTable(g){
-  const grp=GROUPS[g];
-  const picks=currentUser?.groupPicks||{};
-  const pts={};grp.teams.forEach(t=>{pts[t]=0;});
-  grp.matches.forEach((pair,i)=>{
-    const r=picks[g+i];
-    if(r==='W') pts[pair[0]]+=3;
-    else if(r==='D'){pts[pair[0]]+=1;pts[pair[1]]+=1;}
-    else if(r==='L') pts[pair[1]]+=3;
-  });
-  return grp.teams.map(t=>({team:t,pts:pts[t]}));
-}
-
-// Get group standings with tiebreaks applied, returns array of {team, pts} ranked 1st-4th
-function getGroupStandings(g){
-  const rows=calcGroupTable(g);
-  // Group by pts
-  const byPts={};
-  rows.forEach(r=>{if(!byPts[r.pts])byPts[r.pts]=[];byPts[r.pts].push(r.team);});
-  const result=[];
-  Object.keys(byPts).map(Number).sort((a,b)=>b-a).forEach(pt=>{
-    const teams=byPts[pt];
-    if(teams.length===1){result.push({team:teams[0],pts:pt});return;}
-    // Apply user tiebreak
-    const key=g+'_'+pt;
-    const saved=(currentUser?.tiebreaks||{})[key];
-    const ordered=saved?saved.filter(t=>teams.includes(t)).concat(teams.filter(t=>!saved.includes(t))):teams;
-    ordered.forEach(t=>result.push({team:t,pts:pt}));
-  });
-  return result;
-}
-
-// ============================================================
-// TIEBREAKING WITHIN GROUPS
-// ============================================================
-function refreshTiebreaks(){
-  const c=document.getElementById('tiebreakContent');c.innerHTML='';
-  let any=false;
-  GROUP_KEYS.forEach(g=>{
-    const rows=calcGroupTable(g);
-    const byPts={};rows.forEach(r=>{if(!byPts[r.pts])byPts[r.pts]=[];byPts[r.pts].push(r.team);});
-    const ties=Object.entries(byPts).filter(([p,t])=>t.length>1&&parseInt(p)>0);
-    if(!ties.length)return;
-    any=true;
-    const block=document.createElement('div');block.className='tiebreak-block';
-    block.innerHTML=`<div class="tiebreak-title">${GROUPS[g].name} — rangering ved likt poeng</div>
-      <div class="tiebreak-note">Dra for å rangere etter Målforskjell (best øverst)</div>`;
-    ties.forEach(([pt,tiedTeams])=>{
-      const ul=document.createElement('ul');ul.className='drag-list';
-      const key=g+'_'+pt;
-      const saved=(currentUser?.tiebreaks||{})[key];
-      const ordered=saved?saved.filter(t=>tiedTeams.includes(t)).concat(tiedTeams.filter(t=>!saved.includes(t))):tiedTeams;
-      ordered.forEach((team,idx)=>{
-        const li=document.createElement('li');li.className='drag-item';li.draggable=true;li.dataset.team=team;
-        li.innerHTML=`<span class="drag-handle">⠿</span><span class="rank-badge">${idx+1}</span><span style="flex:1">${team}</span><span style="font-size:11px;color:var(--muted)">${pt}p — ranger etter MF</span>`;
-        ul.appendChild(li);
-      });
-      makeDraggable(ul,()=>{
-        const order=[...ul.querySelectorAll('.drag-item')].map(li=>li.dataset.team);
-        if(!currentUser.tiebreaks)currentUser.tiebreaks={};
-        currentUser.tiebreaks[key]=order;
+      function pickResult(g, i, res) {
+        if (isLocked()) return;
+        if (!currentUser) {
+          alert("Skriv inn navnet ditt først.");
+          showTab("home");
+          return;
+        }
+        const key = g + i;
+        ["W", "D", "L"].forEach((r) => {
+          const btn = document.getElementById("rb-" + key + "-" + r);
+          if (btn) btn.className = "rb" + (r === res ? " sel-" + r : "");
+        });
+        if (!currentUser.groupPicks) currentUser.groupPicks = {};
+        currentUser.groupPicks[key] = res;
         saveUser(currentUser);
+        updateGroupProgress();
         refreshTiebreaks();
-      });
-      block.appendChild(ul);
-    });
-    c.appendChild(block);
-  });
-  if(!any) c.innerHTML='<div class="notice">Ingen poengtying ennå — tipp flere kamper for å se dette.</div>';
-}
-
-// ============================================================
-// TOUCH + MOUSE DRAG — works on iOS, Android and desktop
-// ============================================================
-function addTouchDrag(ul, itemSel, canDragFn, onDrop, onMove){
-  let dragEl=null, clone=null, startY=0, startX=0, dragPts=null;
-
-  ul.addEventListener('dragstart',e=>{
-    dragEl=e.target.closest(itemSel);
-    if(!dragEl||(canDragFn&&!canDragFn(dragEl))){dragEl=null;e.preventDefault();return;}
-    dragPts=dragEl.dataset.pts!==undefined?parseInt(dragEl.dataset.pts):null;
-    setTimeout(()=>dragEl.classList.add('dragging'),0);
-  });
-  ul.addEventListener('dragend',()=>{
-    if(!dragEl)return;
-    dragEl.classList.remove('dragging');dragEl=null;dragPts=null;onDrop();
-  });
-  ul.addEventListener('dragover',e=>{
-    e.preventDefault();if(!dragEl)return;
-    const target=e.target.closest(itemSel);
-    if(!target||target===dragEl)return;
-    if(dragPts!==null&&parseInt(target.dataset.pts)!==dragPts)return;
-    const rect=target.getBoundingClientRect();
-    ul.insertBefore(dragEl,e.clientY<rect.top+rect.height/2?target:target.nextSibling);
-    onMove&&onMove();
-  });
-
-  ul.addEventListener('touchstart',e=>{
-    const t=e.touches[0];
-    const el=document.elementFromPoint(t.clientX,t.clientY)?.closest(itemSel);
-    if(!el||(canDragFn&&!canDragFn(el)))return;
-    dragEl=el;
-    dragPts=el.dataset.pts!==undefined?parseInt(el.dataset.pts):null;
-    startY=t.clientY;startX=t.clientX;
-    const rect=el.getBoundingClientRect();
-    clone=el.cloneNode(true);
-    clone.style.cssText='position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;opacity:0.88;z-index:9999;pointer-events:none;background:var(--surface2);border:1px solid var(--gold);border-radius:6px';
-    document.body.appendChild(clone);
-    el.classList.add('dragging');
-  },{passive:true});
-
-  ul.addEventListener('touchmove',e=>{
-    if(!dragEl)return;
-    e.preventDefault();
-    const t=e.touches[0];
-    clone.style.transform='translate('+(t.clientX-startX)+'px,'+(t.clientY-startY)+'px)';
-    clone.style.display='none';
-    const under=document.elementFromPoint(t.clientX,t.clientY)?.closest(itemSel);
-    clone.style.display='';
-    if(!under||under===dragEl)return;
-    if(dragPts!==null&&parseInt(under.dataset.pts)!==dragPts)return;
-    const rect=under.getBoundingClientRect();
-    ul.insertBefore(dragEl,t.clientY<rect.top+rect.height/2?under:under.nextSibling);
-    onMove&&onMove();
-  },{passive:false});
-
-  const endTouch=()=>{
-    if(!dragEl)return;
-    dragEl.classList.remove('dragging');
-    if(clone){clone.remove();clone=null;}
-    dragEl=null;dragPts=null;
-    onDrop();
-  };
-  ul.addEventListener('touchend',endTouch);
-  ul.addEventListener('touchcancel',endTouch);
-}
-
-function makeDraggable(ul, onDrop){
-  addTouchDrag(ul,'.drag-item',null,onDrop,()=>{
-    [...ul.querySelectorAll('.drag-item')].forEach((li,i)=>{
-      const rb=li.querySelector('.rank-badge');if(rb)rb.textContent=i+1;
-    });
-  });
-}
-
-function makeThirdsDraggable(ul){
-  addTouchDrag(
-    ul,'.third-item',
-    el=>el.classList.contains('can-drag'),
-    ()=>saveThirdRank(ul),
-    ()=>{
-      let rank=0;
-      ul.querySelectorAll('.third-item').forEach(li=>{
-        const rb=li.querySelector('.rank-badge');if(rb)rb.textContent=++rank;
-      });
-      let pos=0;
-      ul.querySelectorAll('.third-item').forEach(li=>{
-        li.classList.toggle('qualifies',pos<8);
-        li.classList.toggle('eliminated',pos>=8);
-        const chip=li.querySelector('.chip');
-        if(chip){chip.className='chip '+(pos<8?'chip-green':'chip-red');chip.textContent=pos<8?'\u2713 Videre':'Ut';}
-        pos++;
-      });
-    }
-  );
-}
-
-
-function saveThirdRank(ul){
-  if(!currentUser)return;
-  const order=[...ul.querySelectorAll('.third-item')].map(li=>li.dataset.group);
-  currentUser.thirdRank=order;
-  saveUser(currentUser);
-  const newOrdered=getThirdsOrdered();
-  refreshR32(newOrdered);
-}
-
-// Resolve a fixed slot like '1A' or '2B' to a team name
-function resolveFixedSlot(slot,standings){
-  const pos=parseInt(slot[0])-1;
-  const grp=slot[1];
-  const st=standings[grp];
-  return st&&st[pos]?st[pos].team:slot;
-}
-
-function refreshR32(thirdOrdered){
-  const c=document.getElementById('r32Content');c.innerHTML='';
-  if(!currentUser)return;
-  const standings={};
-  GROUP_KEYS.forEach(g=>{standings[g]=getGroupStandings(g);});
-  const qualGroups=(thirdOrdered||getThirdsOrdered()).slice(0,8).map(t=>t.group);
-
-  // First pass: assign qualifying groups to pool slots strictly (pool must match)
-  const assigned={};
-  const usedGroups=new Set();
-  R32.forEach(m=>{
-    if(m.aPool){
-      const g=qualGroups.find(g=>m.aPool.includes(g)&&!usedGroups.has(g));
-      if(g){assigned[m.id]=g;usedGroups.add(g);}
-    }
-  });
-  // Second pass: any pool slots still unassigned get the next unassigned qualifying group
-  // (fallback for when user's predicted thirds don't perfectly match pools)
-  R32.forEach(m=>{
-    if(m.aPool&&!assigned[m.id]){
-      const g=qualGroups.find(g=>!usedGroups.has(g));
-      if(g){assigned[m.id]=g;usedGroups.add(g);}
-    }
-  });
-
-  R32.forEach(m=>{
-    const hTeam=resolveFixedSlot(m.hSlot,standings);
-    let aTeam,aResolved=true;
-    if(m.aSlot){
-      aTeam=resolveFixedSlot(m.aSlot,standings);
-    } else {
-      const g=assigned[m.id];
-      if(g){
-        const st=standings[g];
-        aTeam=st&&st[2]?st[2].team:'3.pl/'+g;
-      } else {
-        aTeam='Beste 3. tredje';aResolved=false;
       }
-    }
 
-    const saved=(currentUser.koPicks||{})[m.id]||'';
-    const validSaved=(saved===hTeam||saved===aTeam)?saved:'';
-    const div=document.createElement('div');div.className='ko-match';
-    if(aResolved){
-      div.innerHTML=`
+      function updateGroupProgress() {
+        const done = Object.keys(currentUser?.groupPicks || {}).length;
+        const total = GROUP_KEYS.reduce(
+          (s, g) => s + GROUPS[g].matches.length,
+          0,
+        );
+        document.getElementById("groupProgress").style.width =
+          Math.round((done / total) * 100) + "%";
+        document.getElementById("groupProgressLabel").textContent =
+          `${done} / ${total} kamper tippet`;
+      }
+
+      // ============================================================
+      // GROUP TABLE CALCULATION
+      // ============================================================
+      function calcGroupTable(g) {
+        const grp = GROUPS[g];
+        const picks = currentUser?.groupPicks || {};
+        const pts = {};
+        grp.teams.forEach((t) => {
+          pts[t] = 0;
+        });
+        grp.matches.forEach((pair, i) => {
+          const r = picks[g + i];
+          if (r === "W") pts[pair[0]] += 3;
+          else if (r === "D") {
+            pts[pair[0]] += 1;
+            pts[pair[1]] += 1;
+          } else if (r === "L") pts[pair[1]] += 3;
+        });
+        return grp.teams.map((t) => ({ team: t, pts: pts[t] }));
+      }
+
+      // Get group standings with tiebreaks applied, returns array of {team, pts} ranked 1st-4th
+      function getGroupStandings(g) {
+        const rows = calcGroupTable(g);
+        // Group by pts
+        const byPts = {};
+        rows.forEach((r) => {
+          if (!byPts[r.pts]) byPts[r.pts] = [];
+          byPts[r.pts].push(r.team);
+        });
+        const result = [];
+        Object.keys(byPts)
+          .map(Number)
+          .sort((a, b) => b - a)
+          .forEach((pt) => {
+            const teams = byPts[pt];
+            if (teams.length === 1) {
+              result.push({ team: teams[0], pts: pt });
+              return;
+            }
+            // Apply user tiebreak
+            const key = g + "_" + pt;
+            const saved = (currentUser?.tiebreaks || {})[key];
+            const ordered = saved
+              ? saved
+                  .filter((t) => teams.includes(t))
+                  .concat(teams.filter((t) => !saved.includes(t)))
+              : teams;
+            ordered.forEach((t) => result.push({ team: t, pts: pt }));
+          });
+        return result;
+      }
+
+      // ============================================================
+      // TIEBREAKING WITHIN GROUPS
+      // ============================================================
+      function refreshTiebreaks() {
+        const c = document.getElementById("tiebreakContent");
+        c.innerHTML = "";
+        let any = false;
+        GROUP_KEYS.forEach((g) => {
+          const rows = calcGroupTable(g);
+          const byPts = {};
+          rows.forEach((r) => {
+            if (!byPts[r.pts]) byPts[r.pts] = [];
+            byPts[r.pts].push(r.team);
+          });
+          const ties = Object.entries(byPts).filter(
+            ([p, t]) => t.length > 1 && parseInt(p) > 0,
+          );
+          if (!ties.length) return;
+          any = true;
+          const block = document.createElement("div");
+          block.className = "tiebreak-block";
+          block.innerHTML = `<div class="tiebreak-title">${GROUPS[g].name} — rangering ved likt poeng</div>
+      <div class="tiebreak-note">Dra for å rangere etter Målforskjell (best øverst)</div>`;
+          ties.forEach(([pt, tiedTeams]) => {
+            const ul = document.createElement("ul");
+            ul.className = "drag-list";
+            const key = g + "_" + pt;
+            const saved = (currentUser?.tiebreaks || {})[key];
+            const ordered = saved
+              ? saved
+                  .filter((t) => tiedTeams.includes(t))
+                  .concat(tiedTeams.filter((t) => !saved.includes(t)))
+              : tiedTeams;
+            ordered.forEach((team, idx) => {
+              const li = document.createElement("li");
+              li.className = "drag-item";
+              li.draggable = true;
+              li.dataset.team = team;
+              li.innerHTML = `<span class="drag-handle">⠿</span><span class="rank-badge">${idx + 1}</span><span style="flex:1">${team}</span><span style="font-size:11px;color:var(--muted)">${pt}p — ranger etter MF</span>`;
+              ul.appendChild(li);
+            });
+            makeDraggable(ul, () => {
+              const order = [...ul.querySelectorAll(".drag-item")].map(
+                (li) => li.dataset.team,
+              );
+              if (!currentUser.tiebreaks) currentUser.tiebreaks = {};
+              currentUser.tiebreaks[key] = order;
+              saveUser(currentUser);
+              refreshTiebreaks();
+            });
+            block.appendChild(ul);
+          });
+          c.appendChild(block);
+        });
+        if (!any)
+          c.innerHTML =
+            '<div class="notice">Ingen poengtying ennå — tipp flere kamper for å se dette.</div>';
+      }
+
+      // ============================================================
+      // TOUCH + MOUSE DRAG — works on iOS, Android and desktop
+      // ============================================================
+      function addTouchDrag(ul, itemSel, canDragFn, onDrop, onMove) {
+        let dragEl = null,
+          clone = null,
+          startY = 0,
+          startX = 0,
+          dragPts = null;
+
+        ul.addEventListener("dragstart", (e) => {
+          dragEl = e.target.closest(itemSel);
+          if (!dragEl || (canDragFn && !canDragFn(dragEl))) {
+            dragEl = null;
+            e.preventDefault();
+            return;
+          }
+          dragPts =
+            dragEl.dataset.pts !== undefined
+              ? parseInt(dragEl.dataset.pts)
+              : null;
+          setTimeout(() => dragEl.classList.add("dragging"), 0);
+        });
+        ul.addEventListener("dragend", () => {
+          if (!dragEl) return;
+          dragEl.classList.remove("dragging");
+          dragEl = null;
+          dragPts = null;
+          onDrop();
+        });
+        ul.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          if (!dragEl) return;
+          const target = e.target.closest(itemSel);
+          if (!target || target === dragEl) return;
+          if (dragPts !== null && parseInt(target.dataset.pts) !== dragPts)
+            return;
+          const rect = target.getBoundingClientRect();
+          ul.insertBefore(
+            dragEl,
+            e.clientY < rect.top + rect.height / 2
+              ? target
+              : target.nextSibling,
+          );
+          onMove && onMove();
+        });
+
+        ul.addEventListener(
+          "touchstart",
+          (e) => {
+            const t = e.touches[0];
+            const el = document
+              .elementFromPoint(t.clientX, t.clientY)
+              ?.closest(itemSel);
+            if (!el || (canDragFn && !canDragFn(el))) return;
+            dragEl = el;
+            dragPts =
+              el.dataset.pts !== undefined ? parseInt(el.dataset.pts) : null;
+            startY = t.clientY;
+            startX = t.clientX;
+            const rect = el.getBoundingClientRect();
+            clone = el.cloneNode(true);
+            clone.style.cssText =
+              "position:fixed;left:" +
+              rect.left +
+              "px;top:" +
+              rect.top +
+              "px;width:" +
+              rect.width +
+              "px;opacity:0.88;z-index:9999;pointer-events:none;background:var(--surface2);border:1px solid var(--gold);border-radius:6px";
+            document.body.appendChild(clone);
+            el.classList.add("dragging");
+          },
+          { passive: true },
+        );
+
+        ul.addEventListener(
+          "touchmove",
+          (e) => {
+            if (!dragEl) return;
+            e.preventDefault();
+            const t = e.touches[0];
+            clone.style.transform =
+              "translate(" +
+              (t.clientX - startX) +
+              "px," +
+              (t.clientY - startY) +
+              "px)";
+            clone.style.display = "none";
+            const under = document
+              .elementFromPoint(t.clientX, t.clientY)
+              ?.closest(itemSel);
+            clone.style.display = "";
+            if (!under || under === dragEl) return;
+            if (dragPts !== null && parseInt(under.dataset.pts) !== dragPts)
+              return;
+            const rect = under.getBoundingClientRect();
+            ul.insertBefore(
+              dragEl,
+              t.clientY < rect.top + rect.height / 2
+                ? under
+                : under.nextSibling,
+            );
+            onMove && onMove();
+          },
+          { passive: false },
+        );
+
+        const endTouch = () => {
+          if (!dragEl) return;
+          dragEl.classList.remove("dragging");
+          if (clone) {
+            clone.remove();
+            clone = null;
+          }
+          dragEl = null;
+          dragPts = null;
+          onDrop();
+        };
+        ul.addEventListener("touchend", endTouch);
+        ul.addEventListener("touchcancel", endTouch);
+      }
+
+      function makeDraggable(ul, onDrop) {
+        addTouchDrag(ul, ".drag-item", null, onDrop, () => {
+          [...ul.querySelectorAll(".drag-item")].forEach((li, i) => {
+            const rb = li.querySelector(".rank-badge");
+            if (rb) rb.textContent = i + 1;
+          });
+        });
+      }
+
+      function makeThirdsDraggable(ul) {
+        addTouchDrag(
+          ul,
+          ".third-item",
+          (el) => el.classList.contains("can-drag"),
+          () => saveThirdRank(ul),
+          () => {
+            let rank = 0;
+            ul.querySelectorAll(".third-item").forEach((li) => {
+              const rb = li.querySelector(".rank-badge");
+              if (rb) rb.textContent = ++rank;
+            });
+            let pos = 0;
+            ul.querySelectorAll(".third-item").forEach((li) => {
+              li.classList.toggle("qualifies", pos < 8);
+              li.classList.toggle("eliminated", pos >= 8);
+              const chip = li.querySelector(".chip");
+              if (chip) {
+                chip.className =
+                  "chip " + (pos < 8 ? "chip-green" : "chip-red");
+                chip.textContent = pos < 8 ? "\u2713 Videre" : "Ut";
+              }
+              pos++;
+            });
+          },
+        );
+      }
+
+      function saveThirdRank(ul) {
+        if (!currentUser) return;
+        const order = [...ul.querySelectorAll(".third-item")].map(
+          (li) => li.dataset.group,
+        );
+        currentUser.thirdRank = order;
+        saveUser(currentUser);
+        const newOrdered = getThirdsOrdered();
+        refreshR32(newOrdered);
+      }
+
+      // Resolve a fixed slot like '1A' or '2B' to a team name
+      function resolveFixedSlot(slot, standings) {
+        const pos = parseInt(slot[0]) - 1;
+        const grp = slot[1];
+        const st = standings[grp];
+        return st && st[pos] ? st[pos].team : slot;
+      }
+
+      function refreshR32(thirdOrdered) {
+        const c = document.getElementById("r32Content");
+        c.innerHTML = "";
+        if (!currentUser) return;
+        const standings = {};
+        GROUP_KEYS.forEach((g) => {
+          standings[g] = getGroupStandings(g);
+        });
+        const qualGroups = (thirdOrdered || getThirdsOrdered())
+          .slice(0, 8)
+          .map((t) => t.group);
+
+        // First pass: assign qualifying groups to pool slots strictly (pool must match)
+        const assigned = {};
+        const usedGroups = new Set();
+        R32.forEach((m) => {
+          if (m.aPool) {
+            const g = qualGroups.find(
+              (g) => m.aPool.includes(g) && !usedGroups.has(g),
+            );
+            if (g) {
+              assigned[m.id] = g;
+              usedGroups.add(g);
+            }
+          }
+        });
+        // Second pass: any pool slots still unassigned get the next unassigned qualifying group
+        // (fallback for when user's predicted thirds don't perfectly match pools)
+        R32.forEach((m) => {
+          if (m.aPool && !assigned[m.id]) {
+            const g = qualGroups.find((g) => !usedGroups.has(g));
+            if (g) {
+              assigned[m.id] = g;
+              usedGroups.add(g);
+            }
+          }
+        });
+
+        R32.forEach((m) => {
+          const hTeam = resolveFixedSlot(m.hSlot, standings);
+          let aTeam,
+            aResolved = true;
+          if (m.aSlot) {
+            aTeam = resolveFixedSlot(m.aSlot, standings);
+          } else {
+            const g = assigned[m.id];
+            if (g) {
+              const st = standings[g];
+              aTeam = st && st[2] ? st[2].team : "3.pl/" + g;
+            } else {
+              aTeam = "Beste 3. tredje";
+              aResolved = false;
+            }
+          }
+
+          const saved = (currentUser.koPicks || {})[m.id] || "";
+          const validSaved = saved === hTeam || saved === aTeam ? saved : "";
+          const div = document.createElement("div");
+          div.className = "ko-match";
+          if (aResolved) {
+            div.innerHTML = `
         <span class="ko-match-label">${m.label}</span>
         <span class="ko-teams">${hTeam} <span style="color:var(--muted)">mot</span> ${aTeam}</span>
         <select class="ko-select" id="ko-${m.id}">
           <option value="">— vinner —</option>
-          <option value="${hTeam}"${validSaved===hTeam?' selected':''}>${hTeam}</option>
-          <option value="${aTeam}"${validSaved===aTeam?' selected':''}>${aTeam}</option>
+          <option value="${hTeam}"${validSaved === hTeam ? " selected" : ""}>${hTeam}</option>
+          <option value="${aTeam}"${validSaved === aTeam ? " selected" : ""}>${aTeam}</option>
         </select>`;
-      div.querySelector('select').addEventListener('change',function(){
-        saveKoPick(m.id,this.value);
-        refreshAllKoRounds();
-      });
-    } else {
-      div.innerHTML=`
+            div.querySelector("select").addEventListener("change", function () {
+              saveKoPick(m.id, this.value);
+              refreshAllKoRounds();
+            });
+          } else {
+            div.innerHTML = `
         <span class="ko-match-label">${m.label}</span>
         <span class="ko-teams" style="color:var(--muted);font-style:italic">${hTeam} mot beste 3. (tbd)</span>
         <select class="ko-select" id="ko-${m.id}" disabled style="opacity:.35">
           <option>— tipp grupper først —</option>
         </select>`;
-    }
-    c.appendChild(div);
-  });
-  refreshAllKoRounds();
-}
+          }
+          c.appendChild(div);
+        });
+        refreshAllKoRounds();
+      }
 
-// ============================================================
-// OTHER KO ROUNDS — propagate winners from round to round
-// ============================================================
-// Bracket pairings: which two previous-round match IDs feed each next-round match
-const R32_TO_R16=[
-  ['r32_73','r32_74'],['r32_75','r32_76'],
-  ['r32_77','r32_78'],['r32_79','r32_80'],
-  ['r32_81','r32_82'],['r32_83','r32_84'],
-  ['r32_85','r32_86'],['r32_87','r32_88']
-];
-const R16_TO_QF=[
-  ['r16_1','r16_2'],['r16_3','r16_4'],
-  ['r16_5','r16_6'],['r16_7','r16_8']
-];
-const QF_TO_SF=[['qf_1','qf_2'],['qf_3','qf_4']];
-const SF_TO_FINAL=[['sf_1','sf_2']];
+      // ============================================================
+      // OTHER KO ROUNDS — propagate winners from round to round
+      // ============================================================
+      // Bracket pairings: which two previous-round match IDs feed each next-round match
+      const R32_TO_R16 = [
+        ["r32_73", "r32_74"],
+        ["r32_75", "r32_76"],
+        ["r32_77", "r32_78"],
+        ["r32_79", "r32_80"],
+        ["r32_81", "r32_82"],
+        ["r32_83", "r32_84"],
+        ["r32_85", "r32_86"],
+        ["r32_87", "r32_88"],
+      ];
+      const R16_TO_QF = [
+        ["r16_1", "r16_2"],
+        ["r16_3", "r16_4"],
+        ["r16_5", "r16_6"],
+        ["r16_7", "r16_8"],
+      ];
+      const QF_TO_SF = [
+        ["qf_1", "qf_2"],
+        ["qf_3", "qf_4"],
+      ];
+      const SF_TO_FINAL = [["sf_1", "sf_2"]];
 
-function buildKoRounds(){
-  // Containers are populated dynamically — nothing to build statically
-}
+      function buildKoRounds() {
+        // Containers are populated dynamically — nothing to build statically
+      }
 
-function buildRound(containerId,prefix,pairs,label,picks){
-  const c=document.getElementById(containerId);c.innerHTML='';
-  pairs.forEach((pair,i)=>{
-    const id=prefix+'_'+(i+1);
-    const hTeam=picks[pair[0]]||null;
-    const aTeam=picks[pair[1]]||null;
-    const saved=picks[id]||'';
-    const validSaved=(saved&&(saved===hTeam||saved===aTeam))?saved:'';
-    const div=document.createElement('div');div.className='ko-match';
-    const matchLabel=label+(pairs.length>1?' '+(i+1):'');
-    if(hTeam&&aTeam){
-      div.innerHTML=`
+      function buildRound(containerId, prefix, pairs, label, picks) {
+        const c = document.getElementById(containerId);
+        c.innerHTML = "";
+        pairs.forEach((pair, i) => {
+          const id = prefix + "_" + (i + 1);
+          const hTeam = picks[pair[0]] || null;
+          const aTeam = picks[pair[1]] || null;
+          const saved = picks[id] || "";
+          const validSaved =
+            saved && (saved === hTeam || saved === aTeam) ? saved : "";
+          const div = document.createElement("div");
+          div.className = "ko-match";
+          const matchLabel = label + (pairs.length > 1 ? " " + (i + 1) : "");
+          if (hTeam && aTeam) {
+            div.innerHTML = `
         <span class="ko-match-label">${matchLabel}</span>
         <span class="ko-teams">${hTeam} <span style="color:var(--muted)">mot</span> ${aTeam}</span>
         <select class="ko-select" id="ko-${id}">
           <option value="">— vinner —</option>
-          <option value="${hTeam}"${validSaved===hTeam?' selected':''}>${hTeam}</option>
-          <option value="${aTeam}"${validSaved===aTeam?' selected':''}>${aTeam}</option>
+          <option value="${hTeam}"${validSaved === hTeam ? " selected" : ""}>${hTeam}</option>
+          <option value="${aTeam}"${validSaved === aTeam ? " selected" : ""}>${aTeam}</option>
         </select>`;
-      div.querySelector('select').addEventListener('change',function(){
-        saveKoPick(id,this.value);
-        refreshAllKoRounds();
-      });
-    } else {
-      const ph1=hTeam||'Vinner kamp '+(i*2+1);
-      const ph2=aTeam||'Vinner kamp '+(i*2+2);
-      div.innerHTML=`
+            div.querySelector("select").addEventListener("change", function () {
+              saveKoPick(id, this.value);
+              refreshAllKoRounds();
+            });
+          } else {
+            const ph1 = hTeam || "Vinner kamp " + (i * 2 + 1);
+            const ph2 = aTeam || "Vinner kamp " + (i * 2 + 2);
+            div.innerHTML = `
         <span class="ko-match-label">${matchLabel}</span>
         <span class="ko-teams" style="color:var(--muted);font-style:italic">${ph1} mot ${ph2}</span>
         <select class="ko-select" id="ko-${id}" disabled style="opacity:.35">
           <option>— fyll inn forrige runde —</option>
         </select>`;
-    }
-    c.appendChild(div);
-  });
-}
-
-function refreshAllKoRounds(){
-  if(!currentUser)return;
-  const picks=currentUser.koPicks||{};
-  buildRound('r16Content','r16',R32_TO_R16,'R16 kamp',picks);
-  buildRound('qfContent','qf',R16_TO_QF,'KF kamp',picks);
-  buildRound('sfContent','sf',QF_TO_SF,'SF kamp',picks);
-  buildRound('finalContent','final',SF_TO_FINAL,'Finale',picks);
-}
-
-function loadKoPredictions(){
-  if(!currentUser)return;
-  refreshAllKoRounds();
-}
-
-function saveKoPick(id,val){
-  if(!currentUser){alert('Skriv inn navnet ditt først.');showTab('home');return;}
-  if(!currentUser.koPicks)currentUser.koPicks={};
-  // If picking a winner in R32, clear any other R32 match that had this same team as winner
-  if(val&&id.startsWith('r32_')){
-    Object.keys(currentUser.koPicks).forEach(k=>{
-      if(k!==id&&k.startsWith('r32_')&&currentUser.koPicks[k]===val){
-        currentUser.koPicks[k]='';
+          }
+          c.appendChild(div);
+        });
       }
-    });
-  }
-  currentUser.koPicks[id]=val;
-  saveUser(currentUser);
-}
 
-function getAllTeams(){
-  const t=[];GROUP_KEYS.forEach(g=>GROUPS[g].teams.forEach(x=>{if(!t.includes(x))t.push(x);}));
-  return t.sort();
-}
+      function refreshAllKoRounds() {
+        if (!currentUser) return;
+        const picks = currentUser.koPicks || {};
+        buildRound("r16Content", "r16", R32_TO_R16, "R16 kamp", picks);
+        buildRound("qfContent", "qf", R16_TO_QF, "KF kamp", picks);
+        buildRound("sfContent", "sf", QF_TO_SF, "SF kamp", picks);
+        buildRound("finalContent", "final", SF_TO_FINAL, "Finale", picks);
+      }
 
-// ============================================================
-// AWARDS
-// ============================================================
-function buildAwardsUI(){
-  document.getElementById('awardsContent').innerHTML=AWARDS.map(a=>`
+      function loadKoPredictions() {
+        if (!currentUser) return;
+        refreshAllKoRounds();
+      }
+
+      function saveKoPick(id, val) {
+        if (!currentUser) {
+          alert("Skriv inn navnet ditt først.");
+          showTab("home");
+          return;
+        }
+        if (!currentUser.koPicks) currentUser.koPicks = {};
+        // If picking a winner in R32, clear any other R32 match that had this same team as winner
+        if (val && id.startsWith("r32_")) {
+          Object.keys(currentUser.koPicks).forEach((k) => {
+            if (
+              k !== id &&
+              k.startsWith("r32_") &&
+              currentUser.koPicks[k] === val
+            ) {
+              currentUser.koPicks[k] = "";
+            }
+          });
+        }
+        currentUser.koPicks[id] = val;
+        saveUser(currentUser);
+      }
+
+      function getAllTeams() {
+        const t = [];
+        GROUP_KEYS.forEach((g) =>
+          GROUPS[g].teams.forEach((x) => {
+            if (!t.includes(x)) t.push(x);
+          }),
+        );
+        return t.sort();
+      }
+
+      // ============================================================
+      // AWARDS
+      // ============================================================
+      function buildAwardsUI() {
+        document.getElementById("awardsContent").innerHTML = AWARDS.map(
+          (a) => `
     <div class="award-row">
       <span class="award-icon">${a.icon}</span>
       <label class="award-label" for="award-${a.id}">${a.label}</label>
       <input class="award-input" id="award-${a.id}" placeholder="Ditt svar..." />
-    </div>`).join('');
-  AWARDS.forEach(a=>{
-    document.getElementById('award-'+a.id).addEventListener('change',function(){saveAward(a.id,this.value);});
-  });
-}
-function loadAwards(){
-  if(!currentUser)return;
-  AWARDS.forEach(a=>{const inp=document.getElementById('award-'+a.id);if(inp)inp.value=(currentUser.awards||{})[a.id]||'';});
-}
-function saveAward(id,val){if(!currentUser)return;if(!currentUser.awards)currentUser.awards={};currentUser.awards[id]=val;saveUser(currentUser);}
+    </div>`,
+        ).join("");
+        AWARDS.forEach((a) => {
+          document
+            .getElementById("award-" + a.id)
+            .addEventListener("change", function () {
+              saveAward(a.id, this.value);
+            });
+        });
+      }
+      function loadAwards() {
+        if (!currentUser) return;
+        AWARDS.forEach((a) => {
+          const inp = document.getElementById("award-" + a.id);
+          if (inp) inp.value = (currentUser.awards || {})[a.id] || "";
+        });
+      }
+      function saveAward(id, val) {
+        if (!currentUser) return;
+        if (!currentUser.awards) currentUser.awards = {};
+        currentUser.awards[id] = val;
+        saveUser(currentUser);
+      }
 
-// ============================================================
-// SUBMIT
-// ============================================================
-function submitPredictions(){
-  if(!currentUser)return;
-  AWARDS.forEach(a=>{const inp=document.getElementById('award-'+a.id);if(inp)saveAward(a.id,inp.value);});
-  currentUser.submitted=true;currentUser.submittedAt=new Date().toISOString();
-  saveUser(currentUser);
-  alert('Tipsene dine er lagret for '+currentUser.name+'!\n\nDu kan fortsatt endre frem til fristen kl. 21:00. Lykke til!');
-  showTab('leaderboard');
-}
+      // ============================================================
+      // SUBMIT
+      // ============================================================
+      function submitPredictions() {
+        if (!currentUser) return;
+        AWARDS.forEach((a) => {
+          const inp = document.getElementById("award-" + a.id);
+          if (inp) saveAward(a.id, inp.value);
+        });
+        currentUser.submitted = true;
+        currentUser.submittedAt = new Date().toISOString();
+        saveUser(currentUser);
+        alert(
+          "Tipsene dine er lagret for " +
+            currentUser.name +
+            "!\n\nDu kan fortsatt endre frem til fristen kl. 21:00. Lykke til!",
+        );
+        showTab("leaderboard");
+      }
 
-// ============================================================
-// LEADERBOARD
-// ============================================================
-function calcScore(u,res){
-  let pts=0;
-  GROUP_KEYS.forEach(g=>GROUPS[g].matches.forEach((_,i)=>{const k=g+i;if(res[k]&&(u.groupPicks||{})[k]===res[k])pts++;}));
-  return pts+(u.awardBonus||0);
-}
-function calcGroupPts(u,res){
-  let pts=0;
-  GROUP_KEYS.forEach(g=>GROUPS[g].matches.forEach((_,i)=>{const k=g+i;if(res[k]&&(u.groupPicks||{})[k]===res[k])pts++;}));
-  return pts;
-}
-async function renderLeaderboard(){
-  const c=document.getElementById('leaderboardContent');
-  c.innerHTML='<div class="notice">Laster tabell...</div>';
-  const allUsers=await getAllUsers();
-  const users=allUsers.filter(u=>u.submitted||Object.keys(u.groupPicks||{}).length>0);
-  if(!users.length){c.innerHTML='<div class="notice">Ingen tips sendt inn ennå.</div>';return;}
-  const res=await getResults();
-  const scored=users.map(u=>({...u,score:calcScore(u,res)})).sort((a,b)=>b.score-a.score);
-  c.innerHTML=scored.map((u,i)=>{
-    const isYou=currentUser?.name===u.name;
-    return `<div class="lb-row${isYou?' you':''}" onclick="openModal('${u.name.replace(/'/g,"\\'")}')">
-      <span class="lb-rank${i<3?' top3':''}">${['🥇','🥈','🥉'][i]||i+1}</span>
+      // ============================================================
+      // LEADERBOARD
+      // ============================================================
+      function calcScore(u, res) {
+        let pts = 0;
+        GROUP_KEYS.forEach((g) =>
+          GROUPS[g].matches.forEach((_, i) => {
+            const k = g + i;
+            if (res[k] && (u.groupPicks || {})[k] === res[k]) pts++;
+          }),
+        );
+        return pts + (u.awardBonus || 0);
+      }
+      function calcGroupPts(u, res) {
+        let pts = 0;
+        GROUP_KEYS.forEach((g) =>
+          GROUPS[g].matches.forEach((_, i) => {
+            const k = g + i;
+            if (res[k] && (u.groupPicks || {})[k] === res[k]) pts++;
+          }),
+        );
+        return pts;
+      }
+      async function renderLeaderboard() {
+        const c = document.getElementById("leaderboardContent");
+        c.innerHTML = '<div class="notice">Laster tabell...</div>';
+        const allUsers = await getAllUsers();
+        const users = allUsers.filter(
+          (u) => u.submitted || Object.keys(u.groupPicks || {}).length > 0,
+        );
+        if (!users.length) {
+          c.innerHTML = '<div class="notice">Ingen tips sendt inn ennå.</div>';
+          return;
+        }
+        const res = await getResults();
+        const scored = users
+          .map((u) => ({ ...u, score: calcScore(u, res) }))
+          .sort((a, b) => b.score - a.score);
+        c.innerHTML = scored
+          .map((u, i) => {
+            const isYou = currentUser?.name === u.name;
+            return `<div class="lb-row${isYou ? " you" : ""}" onclick="openModal('${u.name.replace(/'/g, "\\'")}')">
+      <span class="lb-rank${i < 3 ? " top3" : ""}">${["🥇", "🥈", "🥉"][i] || i + 1}</span>
       <div style="flex:1">
-        <div class="lb-name">${u.name}${isYou?' <span class="chip chip-gold">deg</span>':''}</div>
-        <div class="lb-breakdown">⚽ ${calcGroupPts(u,res)}p grupper · 🌟 ${u.awardBonus||0}p spesial · ${u.submitted?'<span style="color:var(--green)">innsendt</span>':'<span style="color:var(--muted)">pågår</span>'}</div>
+        <div class="lb-name">${u.name}${isYou ? ' <span class="chip chip-gold">deg</span>' : ""}</div>
+        <div class="lb-breakdown">⚽ ${calcGroupPts(u, res)}p grupper · 🌟 ${u.awardBonus || 0}p spesial · ${u.submitted ? '<span style="color:var(--green)">innsendt</span>' : '<span style="color:var(--muted)">pågår</span>'}</div>
       </div>
       <span class="lb-pts">${u.score}p</span>
     </div>`;
-  }).join('');
-}
+          })
+          .join("");
+      }
 
-// ============================================================
-// MODAL
-// ============================================================
-async function openModal(name){
-  const u=getUser(name);if(!u)return;
-  document.getElementById('modalTitle').textContent=name+'s tips';
-  const res=await getResults();let html='';
-  html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px">Gruppefase-tips</div>';
-  GROUP_KEYS.forEach(g=>{
-    html+=`<div style="font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:600">${GROUPS[g].name}</div>`;
-    GROUPS[g].matches.forEach((pair,i)=>{
-      const key=g+i;const pick=(u.groupPicks||{})[key];const actual=res[key];
-      const correct=pick&&actual&&pick===actual;const wrong=pick&&actual&&pick!==actual;
-      const label=pick==='W'?pair[0]+' vant':pick==='D'?'Uavgjort':pick==='L'?pair[1]+' vant':'—';
-      html+=`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">
+      // ============================================================
+      // MODAL
+      // ============================================================
+      async function openModal(name) {
+        const u = getUser(name);
+        if (!u) return;
+        document.getElementById("modalTitle").textContent = name + "s tips";
+        const res = await getResults();
+        let html = "";
+        html +=
+          '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:10px">Gruppefase-tips</div>';
+        GROUP_KEYS.forEach((g) => {
+          html += `<div style="font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:600">${GROUPS[g].name}</div>`;
+          GROUPS[g].matches.forEach((pair, i) => {
+            const key = g + i;
+            const pick = (u.groupPicks || {})[key];
+            const actual = res[key];
+            const correct = pick && actual && pick === actual;
+            const wrong = pick && actual && pick !== actual;
+            const label =
+              pick === "W"
+                ? pair[0] + " vant"
+                : pick === "D"
+                  ? "Uavgjort"
+                  : pick === "L"
+                    ? pair[1] + " vant"
+                    : "—";
+            html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">
         <span>${pair[0]} – ${pair[1]}</span>
-        <span>${pick?`<span class="chip chip-${pick==='W'?'green':pick==='D'?'blue':'red'}">${label}</span>`:'<span style="color:var(--muted)">—</span>'}
-        ${correct?'<span style="color:var(--green);margin-left:4px">+1</span>':''}
-        ${wrong?'<span style="color:var(--red);margin-left:4px">✗</span>':''}
+        <span>${pick ? `<span class="chip chip-${pick === "W" ? "green" : pick === "D" ? "blue" : "red"}">${label}</span>` : '<span style="color:var(--muted)">—</span>'}
+        ${correct ? '<span style="color:var(--green);margin-left:4px">+1</span>' : ""}
+        ${wrong ? '<span style="color:var(--red);margin-left:4px">✗</span>' : ""}
         </span></div>`;
-    });
-  });
-  if(u.awards&&Object.values(u.awards).some(v=>v)){
-    html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:16px 0 10px">Spesialspill</div>';
-    AWARDS.forEach(a=>{if(u.awards[a.id])html+=`<div style="display:flex;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)"><span>${a.icon} ${a.label}</span><span style="margin-left:auto">${u.awards[a.id]}</span></div>`;});
-  }
-  const koPicks=u.koPicks||{};
-  const koEntries=Object.entries(koPicks).filter(([,v])=>v);
-  if(koEntries.length){
-    html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:16px 0 10px">Sluttspill-tips</div>';
-    koEntries.forEach(([k,v])=>{html+=`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span>${k}</span><span>${v}</span></div>`;});
-  }
-  document.getElementById('modalBody').innerHTML=html;
-  document.getElementById('modalOverlay').classList.add('open');
-}
-function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
-document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+          });
+        });
+        if (u.awards && Object.values(u.awards).some((v) => v)) {
+          html +=
+            '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:16px 0 10px">Spesialspill</div>';
+          AWARDS.forEach((a) => {
+            if (u.awards[a.id])
+              html += `<div style="display:flex;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)"><span>${a.icon} ${a.label}</span><span style="margin-left:auto">${u.awards[a.id]}</span></div>`;
+          });
+        }
+        const koPicks = u.koPicks || {};
+        const koEntries = Object.entries(koPicks).filter(([, v]) => v);
+        if (koEntries.length) {
+          html +=
+            '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin:16px 0 10px">Sluttspill-tips</div>';
+          koEntries.forEach(([k, v]) => {
+            html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span>${k}</span><span>${v}</span></div>`;
+          });
+        }
+        document.getElementById("modalBody").innerHTML = html;
+        document.getElementById("modalOverlay").classList.add("open");
+      }
+      function closeModal() {
+        document.getElementById("modalOverlay").classList.remove("open");
+      }
+      document
+        .getElementById("modalOverlay")
+        .addEventListener("click", function (e) {
+          if (e.target === this) closeModal();
+        });
 
-// ============================================================
-// ADMIN
-// ============================================================
-function checkAdminPin(){
-  if(document.getElementById('adminPinInput').value===ADMIN_PIN){
-    document.getElementById('adminTools').classList.add('visible');
-    document.getElementById('adminPinInput').value='';
-    alert('Admin aktivert ✓');
-  }else alert('Feil PIN');
-}
-function buildAdminResultEntries(){
-  const c=document.getElementById('resultEntries');c.innerHTML='';
-  const res=getResults();
-  GROUP_KEYS.forEach(g=>{
-    GROUPS[g].matches.forEach((pair,i)=>{
-      const key=g+i;
-      const div=document.createElement('div');div.className='result-entry';
-      const sel=document.createElement('select');sel.id='admin-'+key;
-      sel.innerHTML=`<option value="">—</option>
-        <option value="W"${res[key]==='W'?' selected':''}>Hjemme (${pair[0]})</option>
-        <option value="D"${res[key]==='D'?' selected':''}>Uavgjort</option>
-        <option value="L"${res[key]==='L'?' selected':''}>Borte (${pair[1]})</option>`;
-      const lbl=document.createElement('span');lbl.className='match-label';lbl.textContent=`${GROUPS[g].name}: ${pair[0]} – ${pair[1]}`;
-      div.appendChild(lbl);div.appendChild(sel);c.appendChild(div);
-    });
-  });
-}
-async function saveResults(){
-  const res=getResults();
-  GROUP_KEYS.forEach(g=>{
-    GROUPS[g].matches.forEach((_,i)=>{
-      const key=g+i;const sel=document.getElementById('admin-'+key);
-      if(sel){if(sel.value)res[key]=sel.value;else delete res[key];}
-    });
-  });
-  await saveResultsData(res);renderLeaderboard();alert('Resultater lagret! Tabellen er oppdatert.');
-}
-async function addAwardPoints(){
-  const name=document.getElementById('awardName').value.trim();
-  const pts=parseInt(document.getElementById('awardPts').value);
-  if(!name||isNaN(pts)){alert('Fyll inn navn og poeng.');return;}
-  const u=getUser(name);if(!u){alert('Finner ikke: '+name);return;}
-  u.awardBonus=(u.awardBonus||0)+pts;await saveUser(u);renderLeaderboard();
-  alert(`La til ${pts}p for ${name}. Total bonus: ${u.awardBonus}`);
-  document.getElementById('awardName').value='';document.getElementById('awardPts').value='';
-}
-</script>
-</body>
+      // ============================================================
+      // ADMIN
+      // ============================================================
+      function checkAdminPin() {
+        if (document.getElementById("adminPinInput").value === ADMIN_PIN) {
+          document.getElementById("adminTools").classList.add("visible");
+          document.getElementById("adminPinInput").value = "";
+          alert("Admin aktivert ✓");
+        } else alert("Feil PIN");
+      }
+      function buildAdminResultEntries() {
+        const c = document.getElementById("resultEntries");
+        c.innerHTML = "";
+        const res = getResults();
+        GROUP_KEYS.forEach((g) => {
+          GROUPS[g].matches.forEach((pair, i) => {
+            const key = g + i;
+            const div = document.createElement("div");
+            div.className = "result-entry";
+            const sel = document.createElement("select");
+            sel.id = "admin-" + key;
+            sel.innerHTML = `<option value="">—</option>
+        <option value="W"${res[key] === "W" ? " selected" : ""}>Hjemme (${pair[0]})</option>
+        <option value="D"${res[key] === "D" ? " selected" : ""}>Uavgjort</option>
+        <option value="L"${res[key] === "L" ? " selected" : ""}>Borte (${pair[1]})</option>`;
+            const lbl = document.createElement("span");
+            lbl.className = "match-label";
+            lbl.textContent = `${GROUPS[g].name}: ${pair[0]} – ${pair[1]}`;
+            div.appendChild(lbl);
+            div.appendChild(sel);
+            c.appendChild(div);
+          });
+        });
+      }
+      async function saveResults() {
+        const res = getResults();
+        GROUP_KEYS.forEach((g) => {
+          GROUPS[g].matches.forEach((_, i) => {
+            const key = g + i;
+            const sel = document.getElementById("admin-" + key);
+            if (sel) {
+              if (sel.value) res[key] = sel.value;
+              else delete res[key];
+            }
+          });
+        });
+        await saveResultsData(res);
+        renderLeaderboard();
+        alert("Resultater lagret! Tabellen er oppdatert.");
+      }
+      async function addAwardPoints() {
+        const name = document.getElementById("awardName").value.trim();
+        const pts = parseInt(document.getElementById("awardPts").value);
+        if (!name || isNaN(pts)) {
+          alert("Fyll inn navn og poeng.");
+          return;
+        }
+        const u = getUser(name);
+        if (!u) {
+          alert("Finner ikke: " + name);
+          return;
+        }
+        u.awardBonus = (u.awardBonus || 0) + pts;
+        await saveUser(u);
+        renderLeaderboard();
+        alert(`La til ${pts}p for ${name}. Total bonus: ${u.awardBonus}`);
+        document.getElementById("awardName").value = "";
+        document.getElementById("awardPts").value = "";
+      }
+    </script>
+  </body>
 </html>

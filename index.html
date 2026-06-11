@@ -1274,19 +1274,18 @@
         return r.ok ? r.json() : [];
       }
       async function sbUpsert(table, data) {
-        const r = await fetch(SB_URL + "/rest/v1/" + table, {
-          method: "POST",
-          headers: {
-            ...SB_HDR,
-            Prefer: "resolution=merge-duplicates,return=minimal",
+        const conflictCol = table === "predictions" ? "name" : "id";
+        const r = await fetch(
+          SB_URL + "/rest/v1/" + table + "?on_conflict=" + conflictCol,
+          {
+            method: "POST",
+            headers: {
+              ...SB_HDR,
+              Prefer: "resolution=merge-duplicates,return=minimal",
+            },
+            body: JSON.stringify(data),
           },
-          body: JSON.stringify(data),
-        });
-        if (!r.ok) {
-          const t = await r.text();
-          console.error("sbUpsert", r.status, t);
-        }
-      }
+        );
       async function sbPatch(table, key, val, data) {
         await fetch(
           SB_URL +

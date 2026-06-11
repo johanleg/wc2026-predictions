@@ -1251,7 +1251,7 @@
         { id: "r32_88", label: "M88", hSlot: "2D", aSlot: "2G", aPool: null }, // 2D vs 2G
       ];
 
-      const ADMIN_PIN = "6767"; // Drit i Hans
+      const ADMIN_PIN = "6767"; // Hans gi faen
       const DEADLINE = new Date("2026-06-12T21:00:00");
       let currentUser = null;
 
@@ -1274,11 +1274,18 @@
         return r.ok ? r.json() : [];
       }
       async function sbUpsert(table, data) {
-        await fetch(SB_URL + "/rest/v1/" + table, {
+        const r = await fetch(SB_URL + "/rest/v1/" + table, {
           method: "POST",
-          headers: { ...SB_HDR, Prefer: "resolution=merge-duplicates" },
+          headers: {
+            ...SB_HDR,
+            Prefer: "resolution=merge-duplicates,return=minimal",
+          },
           body: JSON.stringify(data),
         });
+        if (!r.ok) {
+          const t = await r.text();
+          console.error("sbUpsert", r.status, t);
+        }
       }
       async function sbPatch(table, key, val, data) {
         await fetch(
@@ -1707,11 +1714,14 @@
                   .concat(tiedTeams.filter((t) => !saved.includes(t)))
               : tiedTeams;
             ordered.forEach((team, idx) => {
+              // Find the actual group position for this team
+              const allStandings = getGroupStandings(g);
+              const groupPos = allStandings.findIndex((r) => r.team === team);
               const li = document.createElement("li");
               li.className = "drag-item";
               li.draggable = true;
               li.dataset.team = team;
-              li.innerHTML = `<span class="drag-handle">⠿</span><span class="rank-badge">${idx + 1}</span><span style="flex:1">${team}</span><span style="font-size:11px;color:var(--muted)">${pt}p — ranger etter MF</span>`;
+              li.innerHTML = `<span class="drag-handle">⠿</span><span class="rank-badge">${groupPos + 1}</span><span style="flex:1">${team}</span><span style="font-size:11px;color:var(--muted)">${pt}p — ranger etter MF</span>`;
               ul.appendChild(li);
             });
             makeDraggable(ul, () => {
@@ -1901,6 +1911,84 @@
         saveUser(currentUser);
         const newOrdered = getThirdsOrdered();
         refreshR32(newOrdered);
+      }
+
+      function getThirdsOrdered() {
+        const thirds = GROUP_KEYS.map((g) => {
+          const standings = getGroupStandings(g);
+          const t = standings[2];
+          return {
+            group: g,
+            team: t ? t.team : "3. plass " + GROUPS[g].name,
+            pts: t ? t.pts : 0,
+          };
+        });
+        const byPts = {};
+        thirds.forEach((t) => {
+          if (!byPts[t.pts]) byPts[t.pts] = [];
+          byPts[t.pts].push(t);
+        });
+        const saved = currentUser?.thirdRank || [];
+        const result = [];
+        Object.keys(byPts)
+          .map(Number)
+          .sort((a, b) => b - a)
+          .forEach((pt) => {
+            const tier = byPts[pt];
+            const savedInTier = saved.filter((g) =>
+              tier.find((t) => t.group === g),
+            );
+            const unsaved = tier.filter((t) => !savedInTier.includes(t.group));
+            const ordered = [
+              ...savedInTier
+                .map((g) => tier.find((t) => t.group === g))
+                .filter(Boolean),
+              ...unsaved,
+            ];
+            ordered.forEach((t) => result.push({ ...t, canDrag: false }));
+          });
+        const cutPts = result[7]?.pts ?? -1;
+        result.forEach((t) => {
+          if (t.pts === cutPts && byPts[cutPts] && byPts[cutPts].length > 1)
+            t.canDrag = true;
+        });
+        return result;
+      }
+
+      function refreshThirdPlace() {
+        const c = document.getElementById("thirdPlaceContent");
+        c.innerHTML = "";
+        const ordered = getThirdsOrdered();
+        const ul = document.createElement("ul");
+        ul.className = "third-list";
+        ul.id = "thirdDragList";
+        ordered.forEach((item, idx) => {
+          const qualifies = idx < 8;
+          const li = document.createElement("li");
+          li.className =
+            "third-item" +
+            (qualifies ? " qualifies" : " eliminated") +
+            (item.canDrag ? " can-drag" : "");
+          li.draggable = item.canDrag;
+          li.dataset.group = item.group;
+          li.dataset.pts = item.pts;
+          li.innerHTML = `
+      <span class="drag-handle" style="opacity:${item.canDrag ? 1 : 0.2}">${item.canDrag ? "⠿" : "—"}</span>
+      <span class="rank-badge">${idx + 1}</span>
+      <span style="flex:1">${item.team}</span>
+      <span class="chip ${qualifies ? "chip-green" : "chip-red"}" style="font-size:10px">${qualifies ? "✓ Videre" : "Ut"}</span>
+      <span style="font-size:11px;color:var(--muted);margin-left:6px">${item.pts}p</span>`;
+          ul.appendChild(li);
+          if (idx === 7) {
+            const sep = document.createElement("li");
+            sep.className = "sep-line";
+            sep.textContent = "──── bunn 4 er ute ────";
+            ul.appendChild(sep);
+          }
+        });
+        makeThirdsDraggable(ul);
+        c.appendChild(ul);
+        refreshR32(ordered);
       }
 
       // Resolve a fixed slot like '1A' or '2B' to a team name
